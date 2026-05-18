@@ -1,0 +1,4 @@
+# DesktopMaestro - Dependencies
+# Install via: pip install -r requirements.txt
+
+pyyaml>=6.0

@@ -1,0 +1,57 @@
+# =============================================================================
+# 🧹 DesktopMaestro — Docker Compose
+# =============================================================================
+# Start everything with:  docker compose up -d
+# Open browser at:        http://localhost:3000
+# API directly:           http://localhost:7899/api/health
+# Stop:                   docker compose down
+# =============================================================================
+
+services:
+  # ─── Python API Server ───
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: desktopmaestro-api
+    ports:
+      - "7899:7899"
+    volumes:
+      # Mount your actual desktop so the container can organize it
+      - ~/Desktop:/root/Desktop:ro
+      # Persist config and undo snapshots
+      - desktopmaestro-data:/root/.config/desktopmaestro
+    environment:
+      - HOME=/root
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:7899/api/health')"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+  # ─── Next.js Frontend ───
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        API_URL: http://api:7899
+    container_name: desktopmaestro-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - API_URL=http://api:7899
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  desktopmaestro-data:
+    driver: local

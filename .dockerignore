@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Git
+.git/
+.gitignore
+
+# Tests
+tests/
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Frontend (built separately)
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Temp
+*.tmp
+*.swp
+*.swo
+*~

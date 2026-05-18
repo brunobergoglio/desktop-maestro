@@ -1,0 +1,24 @@
+# =============================================================================
+# DesktopMaestro — Development Override
+# =============================================================================
+# Use this for faster development: 
+#   docker compose -f docker-compose.yml -f docker-compose.override.yml up -d
+# =============================================================================
+services:
+  api:
+    # Mount source for hot reload (no rebuild needed on code changes)
+    volumes:
+      - ./organizer:/app/organizer
+      - ./config:/app/config
+
+  frontend:
+    # Development mode with hot reload
+    build:
+      target: builder
+      args:
+        - API_URL=http://api:7899
+    command: npx next dev -p 3000
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/package.json:/app/package.json

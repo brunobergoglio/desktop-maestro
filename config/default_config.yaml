@@ -1,0 +1,89 @@
+# ─── DesktopMaestro Default Configuration ───
+# Smart desktop organizer for macOS
+# Created: 2026-05-18
+
+# ─── Paths ───
+desktop_path: "~/Desktop"
+config_dir: "~/.config/desktopmaestro"
+log_dir: "~/Library/Logs/DesktopMaestro"
+
+# ─── Language ───
+language: "en"                    # Folder names: "en" (English) or "es" (Español)
+
+# ─── Behavior ───
+dry_run: false                    # Simulate only, don't move files
+verbose: true                     # Show detailed information
+auto_organize: false              # Organize automatically on run
+organize_on_startup: false        # Organize on login
+create_icon_macos: true           # Create custom folder icons
+
+# ─── File Filters ───
+# Only include these extensions (empty = all)
+include_extensions: []
+# Extensions to ignore
+exclude_extensions:
+  - ".part"
+  - ".crdownload"
+  - ".tmp"
+  - ".temp"
+  - ".download"
+# Specific files to ignore
+exclude_files:
+  - ".DS_Store"
+  - ".localized"
+  - "Desktop DB"
+  - "Desktop DF"
+# Regex patterns to ignore
+exclude_patterns:
+  - '^\._.*'                # Apple Double files (._Name)
+  - '^\..*\.icloud$'        # iCloud placeholder files
+  - '~$'                    # Temp files ending in ~
+
+# ─── Categories ───
+# Disabled categories (no folders created, files go to "Others")
+disabled_categories: []
+# Custom folder names for categories
+category_folder_names:
+  # Example:
+  # "Images": "My Photos"
+  # "Documents": "01 - Documents"
+
+# Custom categories (optional)
+custom_categories:
+  # - name: "My Category"
+  #   icon: "✨"
+  #   extensions: [".myext"]
+  #   patterns: []
+  #   folder_name: "✨ My Category"
+  #   priority: 50
+
+# ─── Organization ───
+max_folder_depth: 1               # Only organize 1 level deep
+sort_into_subfolders: false       # Don't create subfolders
+date_based_folders: false         # Don't group by date
+preserve_original_filenames: true # Keep original filenames
+lowercase_extensions: true        # Normalize extensions to lowercase
+remove_conflicting_chars: true    # Remove problematic characters
+
+# ─── Safety ───
+create_undo_snapshot: true        # Save snapshot for undo
+max_undo_snapshots: 50            # Keep last 50 snapshots
+min_file_age_minutes: 0           # Don't move files newer than this
+skip_locked_files: true           # Skip locked files
+skip_files_in_use: true           # Skip files in use
+
+# ─── Scheduling ───
+schedule_enabled: false           # Scheduled organization
+schedule_interval_hours: 6        # Every 6 hours
+# schedule_time: "03:00"          # Or at a specific time
+
+# ─── Notifications ───
+show_notifications: true
+notification_on_complete: true
+notification_on_error: true
+
+# ─── macOS Specific ───
+hide_dmg_volumes: true           # Hide mounted DMG volumes
+skip_system_directories: true    # Don't process system directories
+respect_spotlight_tags: false    # Respect Spotlight tags
+add_tags_to_folders: false       # Add color tags to folders
