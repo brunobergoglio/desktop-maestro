@@ -76,9 +76,7 @@ class ColoredFormatter:
     }
 
     @classmethod
-    def format(
-        cls, level: str, message: str, use_color: bool = True
-    ) -> str:
+    def format(cls, level: str, message: str, use_color: bool = True) -> str:
         """
         Format a message with timestamp and optional ANSI colors.
 
@@ -268,7 +266,7 @@ def show_macos_dialog(
         f'with title "{title}" '
         f'buttons {{"{buttons_str}"}} '
         f'default button "{default_button}" '
-        f'with icon {icon}'
+        f"with icon {icon}"
     )
 
     try:
@@ -430,9 +428,7 @@ def get_desktop_stats(desktop_path: str = "~/Desktop") -> Dict:
 
                 _, ext = os.path.splitext(entry)
                 ext = ext.lower() or "(no extension)"
-                stats["by_extension"][ext] = (
-                    stats["by_extension"].get(ext, 0) + 1
-                )
+                stats["by_extension"][ext] = stats["by_extension"].get(ext, 0) + 1
 
                 # Size category
                 if file_size < 10_240:

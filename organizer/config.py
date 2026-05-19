@@ -19,7 +19,12 @@ try:
 except ImportError:
     HAS_YAML = False
 
-from .categories import Category, get_category_folder_name, SUPPORTED_LANGUAGES, DEFAULT_LANGUAGE
+from .categories import (
+    Category,
+    get_category_folder_name,
+    SUPPORTED_LANGUAGES,
+    DEFAULT_LANGUAGE,
+)
 
 # ─── Default paths (macOS) ───
 DEFAULT_DESKTOP_PATH = os.path.expanduser("~/Desktop")
@@ -66,17 +71,21 @@ class DesktopMaestroConfig:
     """Only include these extensions (empty = all)."""
     exclude_extensions: List[str] = field(default_factory=list)
     """Extensions to always skip."""
-    exclude_files: List[str] = field(default_factory=lambda: [
-        ".DS_Store",
-        ".localized",
-        "Desktop DB",
-        "Desktop DF",
-    ])
+    exclude_files: List[str] = field(
+        default_factory=lambda: [
+            ".DS_Store",
+            ".localized",
+            "Desktop DB",
+            "Desktop DF",
+        ]
+    )
     """Specific filenames to never touch."""
-    exclude_patterns: List[str] = field(default_factory=lambda: [
-        r"^\._.*",  # Apple Double files
-        r"^\..*\.icloud$",  # iCloud placeholder files
-    ])
+    exclude_patterns: List[str] = field(
+        default_factory=lambda: [
+            r"^\._.*",  # Apple Double files
+            r"^\..*\.icloud$",  # iCloud placeholder files
+        ]
+    )
     """Regex patterns for files to exclude."""
 
     # ─── Custom Categories ───
@@ -235,9 +244,7 @@ def load_config(config_path: Optional[str] = None) -> DesktopMaestroConfig:
     return DesktopMaestroConfig.from_dict(data)
 
 
-def save_config(
-    config: DesktopMaestroConfig, path: Optional[str] = None
-) -> str:
+def save_config(config: DesktopMaestroConfig, path: Optional[str] = None) -> str:
     """
     Save configuration to a file.
 

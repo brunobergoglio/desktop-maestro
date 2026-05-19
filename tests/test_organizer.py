@@ -20,25 +20,39 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from organizer import __version__, __description__
 from organizer.categories import (
-    Category, smart_categorize, is_macos_system_file,
-    DEFAULT_CATEGORIES, OTHERS, CATEGORY_ICONS,
-    MACOS_SYSTEM_FILES, build_extension_map,
+    Category,
+    smart_categorize,
+    is_macos_system_file,
+    DEFAULT_CATEGORIES,
+    OTHERS,
+    CATEGORY_ICONS,
+    MACOS_SYSTEM_FILES,
+    build_extension_map,
 )
 from organizer.config import (
-    DesktopMaestroConfig, load_config, save_config,
-    create_default_config, DEFAULT_CONFIG_FILE,
+    DesktopMaestroConfig,
+    load_config,
+    save_config,
+    create_default_config,
+    DEFAULT_CONFIG_FILE,
 )
 from organizer.core import (
-    DesktopOrganizer, OrganizeResult, UndoManager, UndoEntry,
+    DesktopOrganizer,
+    OrganizeResult,
+    UndoManager,
+    UndoEntry,
     organize_desktop,
 )
 from organizer.utils import (
-    is_macos, get_desktop_stats, _format_size,
+    is_macos,
+    get_desktop_stats,
+    _format_size,
     DesktopMaestroLogger,
 )
 
 
 # ─── Fixtures ───
+
 
 @pytest.fixture
 def temp_desktop():
@@ -70,12 +84,12 @@ def temp_desktop():
 
         for name, content in files.items():
             filepath = os.path.join(desktop, name)
-            with open(filepath, 'wb') as f:
+            with open(filepath, "wb") as f:
                 f.write(content)
 
         # Archivo del sistema macOS (no debe moverse)
         ds_store = os.path.join(desktop, ".DS_Store")
-        with open(ds_store, 'w') as f:
+        with open(ds_store, "w") as f:
             f.write("")
 
         # Directorio (no debe moverse)
@@ -83,7 +97,7 @@ def temp_desktop():
 
         # Archivo temporal
         temp_file = os.path.join(desktop, "download.part")
-        with open(temp_file, 'w') as f:
+        with open(temp_file, "w") as f:
             f.write("incomplete")
 
         yield desktop
@@ -97,6 +111,7 @@ def organizer():
 
 
 # ─── Tests de Categorías ───
+
 
 class TestCategories:
     def test_smart_categorize_image(self):
@@ -186,22 +201,27 @@ class TestCategories:
     def test_all_categories_have_icons(self):
         for cat in DEFAULT_CATEGORIES:
             assert cat.icon, f"Category {cat.name} has no icon"
-            assert cat.get_localized_folder(), f"Category {cat.name} has no localized folder name"
+            assert (
+                cat.get_localized_folder()
+            ), f"Category {cat.name} has no localized folder name"
 
-    @pytest.mark.parametrize("filename,expected_category", [
-        ("photo.heic", "Images"),
-        ("video.avi", "Videos"),
-        ("song.ogg", "Audio"),
-        ("archive.7z", "Archives"),
-        ("font.woff2", "Fonts"),
-        ("ebook.mobi", "Books"),
-        ("spreadsheet.ods", "Spreadsheets"),
-        ("presentation.odp", "Presentations"),
-        ("db.sqlite", "Databases"),
-        ("config.plist", "Configuration"),
-        ("email.eml", "Emails"),
-        ("dmg_file.dmg", "Archives"),
-    ])
+    @pytest.mark.parametrize(
+        "filename,expected_category",
+        [
+            ("photo.heic", "Images"),
+            ("video.avi", "Videos"),
+            ("song.ogg", "Audio"),
+            ("archive.7z", "Archives"),
+            ("font.woff2", "Fonts"),
+            ("ebook.mobi", "Books"),
+            ("spreadsheet.ods", "Spreadsheets"),
+            ("presentation.odp", "Presentations"),
+            ("db.sqlite", "Databases"),
+            ("config.plist", "Configuration"),
+            ("email.eml", "Emails"),
+            ("dmg_file.dmg", "Archives"),
+        ],
+    )
     def test_various_extensions(self, filename, expected_category):
         cat = smart_categorize(filename)
         if expected_category:
@@ -210,7 +230,7 @@ class TestCategories:
     def test_macos_system_files_not_in_default_categories(self):
         """DS_Store no debería categorizarse como nada."""
         for f in MACOS_SYSTEM_FILES:
-            if f.endswith('/'):  # skip directories
+            if f.endswith("/"):  # skip directories
                 continue
             cat = smart_categorize(f)
             # These should be categorized as Others or macOS System
@@ -218,6 +238,7 @@ class TestCategories:
 
 
 # ─── Tests de Configuración ───
+
 
 class TestConfig:
     def test_default_config_creation(self):
@@ -270,6 +291,7 @@ class TestConfig:
         config = DesktopMaestroConfig()
         config.category_folder_names = {"Images": "My Photos"}
         from organizer.categories import IMAGES
+
         folder = config.resolve_category_folder(IMAGES)
         assert folder == "My Photos"
 
@@ -279,6 +301,7 @@ class TestConfig:
 
 
 # ─── Tests del Core ───
+
 
 class TestCore:
     def test_scan_desktop(self, temp_desktop, organizer):
@@ -448,6 +471,7 @@ class TestCore:
 
 # ─── Tests de Undo ───
 
+
 class TestUndo:
     def test_undo_create_snapshot(self, tmpdir):
         """Undo snapshots should be created correctly."""
@@ -494,6 +518,7 @@ class TestUndo:
 
 # ─── Tests de Utilidades ───
 
+
 class TestUtils:
     def test_format_size(self):
         assert _format_size(500) == "500.0 B"
@@ -530,9 +555,7 @@ class TestUtils:
     def test_category_icons_completeness(self):
         """All default categories must have icons defined."""
         for cat in DEFAULT_CATEGORIES:
-            assert cat.name in CATEGORY_ICONS, (
-                f"Missing icon for {cat.name}"
-            )
+            assert cat.name in CATEGORY_ICONS, f"Missing icon for {cat.name}"
 
     def test_no_duplicate_extensions(self):
         """Duplicate extensions between categories should be handled."""
@@ -547,6 +570,7 @@ class TestUtils:
 
 
 # ─── Tests de Integración ───
+
 
 class TestIntegration:
     def test_full_workflow(self, temp_desktop):
@@ -569,6 +593,7 @@ class TestIntegration:
 
 # ─── Tests de Rendimiento ───
 
+
 class TestPerformance:
     def test_organize_many_files(self, tmpdir):
         """Performance: organize 500 files in under 30 seconds."""
@@ -578,7 +603,7 @@ class TestPerformance:
         for i in range(500):
             ext = [".jpg", ".pdf", ".mp4", ".mp3", ".py", ".zip"][i % 6]
             filepath = os.path.join(str(desktop), f"file_{i}{ext}")
-            with open(filepath, 'w') as f:
+            with open(filepath, "w") as f:
                 f.write(f"content {i}")
 
         config = DesktopMaestroConfig(
@@ -588,6 +613,7 @@ class TestPerformance:
         org = DesktopOrganizer(config=config)
 
         import time
+
         start = time.time()
         result = org.organize()
         elapsed = time.time() - start

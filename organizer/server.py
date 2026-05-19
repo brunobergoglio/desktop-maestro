@@ -27,8 +27,12 @@ from urllib.parse import urlparse, parse_qs
 from . import __version__
 from .core import DesktopOrganizer, organize_desktop
 from .categories import (
-    DEFAULT_CATEGORIES, OTHERS, CATEGORY_ICONS,
-    translate_folder_name, get_supported_languages, SUPPORTED_LANGUAGES,
+    DEFAULT_CATEGORIES,
+    OTHERS,
+    CATEGORY_ICONS,
+    translate_folder_name,
+    get_supported_languages,
+    SUPPORTED_LANGUAGES,
     smart_categorize,
 )
 from .config import load_config, save_config, DesktopMaestroConfig, DEFAULT_CONFIG_FILE
@@ -51,7 +55,9 @@ class DesktopMaestroAPI(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+        self.send_header(
+            "Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS"
+        )
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
         self.wfile.write(json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8"))
@@ -83,7 +89,9 @@ class DesktopMaestroAPI(BaseHTTPRequestHandler):
         """Handle CORS preflight."""
         self.send_response(204)
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+        self.send_header(
+            "Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS"
+        )
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
 
@@ -91,12 +99,14 @@ class DesktopMaestroAPI(BaseHTTPRequestHandler):
         path = urlparse(self.path).path.rstrip("/")
 
         if path == "/api/health" or path == "/health":
-            return self._send_json({
-                "status": "ok",
-                "version": __version__,
-                "language": self._get_lang(),
-                "languages": get_supported_languages(),
-            })
+            return self._send_json(
+                {
+                    "status": "ok",
+                    "version": __version__,
+                    "language": self._get_lang(),
+                    "languages": get_supported_languages(),
+                }
+            )
 
         if path == "/api/stats" or path == "/stats":
             config = load_config()
@@ -109,21 +119,25 @@ class DesktopMaestroAPI(BaseHTTPRequestHandler):
             for cat in DEFAULT_CATEGORIES:
                 if cat.name == "macOS System":
                     continue
-                cats.append({
-                    "name": cat.name,
-                    "icon": cat.icon,
-                    "folder_name": cat.get_localized_folder(lang),
-                    "extensions": sorted(cat.extensions),
-                    "priority": cat.priority,
-                })
+                cats.append(
+                    {
+                        "name": cat.name,
+                        "icon": cat.icon,
+                        "folder_name": cat.get_localized_folder(lang),
+                        "extensions": sorted(cat.extensions),
+                        "priority": cat.priority,
+                    }
+                )
             # Add "Others"
-            cats.append({
-                "name": "Others",
-                "icon": "📦",
-                "folder_name": translate_folder_name("Others", "📦", lang),
-                "extensions": [],
-                "priority": -999,
-            })
+            cats.append(
+                {
+                    "name": "Others",
+                    "icon": "📦",
+                    "folder_name": translate_folder_name("Others", "📦", lang),
+                    "extensions": [],
+                    "priority": -999,
+                }
+            )
             return self._send_json(cats)
 
         if path == "/api/config" or path == "/config":
@@ -151,21 +165,32 @@ class DesktopMaestroAPI(BaseHTTPRequestHandler):
                         if os.path.isdir(full) and not entry.startswith("."):
                             items.append(entry)
                 parent = os.path.dirname(folder_path) if folder_path != "/" else None
-                return self._send_json({
-                    "path": folder_path,
-                    "folders": items,
-                    "parent": parent,
-                })
+                return self._send_json(
+                    {
+                        "path": folder_path,
+                        "folders": items,
+                        "parent": parent,
+                    }
+                )
             except PermissionError:
-                return self._send_json({
-                    "error": "Permission denied",
-                    "path": folder_path, "folders": [],
-                    "parent": os.path.dirname(folder_path),
-                }, 403)
+                return self._send_json(
+                    {
+                        "error": "Permission denied",
+                        "path": folder_path,
+                        "folders": [],
+                        "parent": os.path.dirname(folder_path),
+                    },
+                    403,
+                )
             except Exception as e:
-                return self._send_json({
-                    "error": str(e), "path": folder_path, "folders": [],
-                }, 500)
+                return self._send_json(
+                    {
+                        "error": str(e),
+                        "path": folder_path,
+                        "folders": [],
+                    },
+                    500,
+                )
 
         if path == "/api/scan" or path == "/scan":
             qs = parse_qs(urlparse(self.path).query)
@@ -175,11 +200,16 @@ class DesktopMaestroAPI(BaseHTTPRequestHandler):
 
             try:
                 if not os.path.isdir(folder_path):
-                    return self._send_json({
-                        "error": "Directory not found",
-                        "path": folder_path,
-                        "items": [], "total_files": 0, "total_folders": 0,
-                    }, 404)
+                    return self._send_json(
+                        {
+                            "error": "Directory not found",
+                            "path": folder_path,
+                            "items": [],
+                            "total_files": 0,
+                            "total_folders": 0,
+                        },
+                        404,
+                    )
 
                 items: list[Dict[str, Any]] = []
                 total_files = 0
@@ -208,7 +238,9 @@ class DesktopMaestroAPI(BaseHTTPRequestHandler):
                         st = os.stat(full)
                         item["size"] = st.st_size
                         item["size_human"] = self._format_size(st.st_size)
-                        item["modified"] = datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M")
+                        item["modified"] = datetime.fromtimestamp(st.st_mtime).strftime(
+                            "%Y-%m-%d %H:%M"
+                        )
                     except OSError:
                         pass
 
@@ -237,29 +269,42 @@ class DesktopMaestroAPI(BaseHTTPRequestHandler):
 
                 parent = os.path.dirname(folder_path) if folder_path != "/" else None
 
-                return self._send_json({
-                    "path": folder_path,
-                    "name": os.path.basename(folder_path) or folder_path,
-                    "parent": parent,
-                    "items": items,
-                    "total_files": total_files,
-                    "total_folders": sum(1 for i in items if i["is_dir"]),
-                    "total_size": total_size,
-                    "total_size_human": self._format_size(total_size),
-                    "by_extension": by_extension,
-                    "by_category": by_category,
-                })
+                return self._send_json(
+                    {
+                        "path": folder_path,
+                        "name": os.path.basename(folder_path) or folder_path,
+                        "parent": parent,
+                        "items": items,
+                        "total_files": total_files,
+                        "total_folders": sum(1 for i in items if i["is_dir"]),
+                        "total_size": total_size,
+                        "total_size_human": self._format_size(total_size),
+                        "by_extension": by_extension,
+                        "by_category": by_category,
+                    }
+                )
             except PermissionError:
-                return self._send_json({
-                    "error": "Permission denied",
-                    "path": folder_path, "items": [],
-                    "total_files": 0, "total_folders": 0,
-                }, 403)
+                return self._send_json(
+                    {
+                        "error": "Permission denied",
+                        "path": folder_path,
+                        "items": [],
+                        "total_files": 0,
+                        "total_folders": 0,
+                    },
+                    403,
+                )
             except Exception as e:
-                return self._send_json({
-                    "error": str(e), "path": folder_path, "items": [],
-                    "total_files": 0, "total_folders": 0,
-                }, 500)
+                return self._send_json(
+                    {
+                        "error": str(e),
+                        "path": folder_path,
+                        "items": [],
+                        "total_files": 0,
+                        "total_folders": 0,
+                    },
+                    500,
+                )
 
         self._send_json({"error": "Not found"}, 404)
 
@@ -279,14 +324,16 @@ class DesktopMaestroAPI(BaseHTTPRequestHandler):
                     overrides["desktop_path"] = custom_path
                 result = organize_desktop(dry_run=dry_run, **overrides)
                 elapsed = time.time() - start
-                return self._send_json({
-                    "success_count": result.success_count,
-                    "skipped_count": len(result.skipped_files),
-                    "error_count": len(result.errors),
-                    "categories_created": list(result.categories_created),
-                    "dry_run": result.dry_run,
-                    "duration": f"{elapsed:.2f}s",
-                })
+                return self._send_json(
+                    {
+                        "success_count": result.success_count,
+                        "skipped_count": len(result.skipped_files),
+                        "error_count": len(result.errors),
+                        "categories_created": list(result.categories_created),
+                        "dry_run": result.dry_run,
+                        "duration": f"{elapsed:.2f}s",
+                    }
+                )
             except Exception as e:
                 return self._send_json({"error": str(e)}, 500)
 
@@ -346,7 +393,7 @@ def run_server(port: int = API_PORT, host: str = API_HOST):
 
 def start_web(args):
     """CLI handler for 'desktopmaestro web'."""
-    port = getattr(args, 'port', API_PORT)
+    port = getattr(args, "port", API_PORT)
     run_server(port=port)
 
 

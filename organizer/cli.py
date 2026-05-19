@@ -16,14 +16,21 @@ from . import __version__, __description__
 from .core import DesktopOrganizer, organize_desktop
 from .categories import SUPPORTED_LANGUAGES
 from .config import (
-    load_config, save_config, create_default_config,
-    DesktopMaestroConfig, DEFAULT_CONFIG_FILE,
+    load_config,
+    save_config,
+    create_default_config,
+    DesktopMaestroConfig,
+    DEFAULT_CONFIG_FILE,
 )
 from .utils import (
-    DesktopMaestroLogger, send_macos_notification,
-    get_desktop_stats, get_system_info,
-    create_launch_agent, remove_launch_agent,
-    is_macos, show_macos_dialog,
+    DesktopMaestroLogger,
+    send_macos_notification,
+    get_desktop_stats,
+    get_system_info,
+    create_launch_agent,
+    remove_launch_agent,
+    is_macos,
+    show_macos_dialog,
 )
 
 
@@ -36,7 +43,9 @@ BANNER = r"""
 ║     Smart desktop organizer for macOS                    ║
 ║                                                          ║
 ╚══════════════════════════════════════════════════════════╝
-""".format(v=__version__)
+""".format(
+    v=__version__
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -59,7 +68,8 @@ Examples:
     )
 
     parser.add_argument(
-        "-v", "--version",
+        "-v",
+        "--version",
         action="version",
         version=f"DesktopMaestro v{__version__}",
     )
@@ -70,13 +80,15 @@ Examples:
         help=f"Path to configuration file (default: {DEFAULT_CONFIG_FILE})",
     )
     parser.add_argument(
-        "--verbose", "-V",
+        "--verbose",
+        "-V",
         action="store_true",
         default=False,
         help="Show detailed information",
     )
     parser.add_argument(
-        "--lang", "--language",
+        "--lang",
+        "--language",
         type=str,
         default=None,
         choices=SUPPORTED_LANGUAGES,
@@ -90,12 +102,14 @@ Examples:
 
     # ─── organize ───
     org_parser = subparsers.add_parser(
-        "organize", aliases=["org", "o"],
+        "organize",
+        aliases=["org", "o"],
         help="Organize desktop files",
         description="Sorts and moves desktop files into organized category folders.",
     )
     org_parser.add_argument(
-        "--dry-run", "-d",
+        "--dry-run",
+        "-d",
         action="store_true",
         default=False,
         help="Simulate without moving files",
@@ -107,7 +121,8 @@ Examples:
         help="Non-interactive mode (for LaunchAgent)",
     )
     org_parser.add_argument(
-        "--force", "-f",
+        "--force",
+        "-f",
         action="store_true",
         default=False,
         help="Force organization (skip warnings)",
@@ -121,7 +136,8 @@ Examples:
 
     # ─── undo ───
     undo_parser = subparsers.add_parser(
-        "undo", aliases=["u"],
+        "undo",
+        aliases=["u"],
         help="Undo last organization",
         description="Restores files to their original locations.",
     )
@@ -140,7 +156,8 @@ Examples:
 
     # ─── stats ───
     stats_parser = subparsers.add_parser(
-        "stats", aliases=["s", "status"],
+        "stats",
+        aliases=["s", "status"],
         help="Show desktop statistics",
         description="Analyzes and displays detailed desktop information.",
     )
@@ -153,7 +170,8 @@ Examples:
 
     # ─── config ───
     config_parser = subparsers.add_parser(
-        "config", aliases=["c"],
+        "config",
+        aliases=["c"],
         help="Manage configuration",
         description="Initialize, edit, or view configuration.",
     )
@@ -172,7 +190,8 @@ Examples:
         help="Reset configuration to defaults",
     )
     reset_parser.add_argument(
-        "--force", "-f",
+        "--force",
+        "-f",
         action="store_true",
         default=False,
         help="Reset without confirmation",
@@ -206,25 +225,29 @@ Examples:
 
     # ─── system ───
     system_parser = subparsers.add_parser(
-        "system", aliases=["info"],
+        "system",
+        aliases=["info"],
         help="System information",
         description="Shows system information and diagnostics.",
     )
 
     # ─── web ───
     web_parser = subparsers.add_parser(
-        "web", aliases=["ui", "gui", "frontend"],
+        "web",
+        aliases=["ui", "gui", "frontend"],
         help="Launch web UI",
         description="Starts the DesktopMaestro web interface and API server.",
     )
     web_parser.add_argument(
-        "--port", "-p",
+        "--port",
+        "-p",
         type=int,
         default=7899,
         help="Port for the API server (default: 7899)",
     )
     web_parser.add_argument(
-        "--open", "-o",
+        "--open",
+        "-o",
         action="store_true",
         default=False,
         help="Open browser automatically",
@@ -234,6 +257,7 @@ Examples:
 
 
 # ─── Command Handlers ───
+
 
 def cmd_organize(args, log: DesktopMaestroLogger):
     """Execute desktop organization."""
@@ -414,6 +438,7 @@ def cmd_stats(args, log: DesktopMaestroLogger):
 
     if args.json:
         import json
+
         print(json.dumps(stats, indent=2, ensure_ascii=False))
         return 0
 
@@ -495,6 +520,7 @@ def cmd_config(args, log: DesktopMaestroLogger):
             if editor:
                 try:
                     import subprocess
+
                     subprocess.run(
                         [editor, config_path],
                         timeout=5,
@@ -511,6 +537,7 @@ def cmd_config(args, log: DesktopMaestroLogger):
         log.section("⚙️  CURRENT CONFIGURATION")
         config = load_config(config_path)
         import json
+
         print(json.dumps(config.to_dict(), indent=2, ensure_ascii=False))
         return 0
 
@@ -524,8 +551,7 @@ def cmd_config(args, log: DesktopMaestroLogger):
         if not args.force and is_macos():
             result = show_macos_dialog(
                 "DesktopMaestro – Reset",
-                "Reset configuration to defaults?\n"
-                "Custom changes will be lost.",
+                "Reset configuration to defaults?\n" "Custom changes will be lost.",
                 buttons=["Reset", "Cancel"],
                 default_button="Cancel",
                 icon="caution",
@@ -595,7 +621,8 @@ def cmd_schedule(args, log: DesktopMaestroLogger):
             # Intentar leer intervalo
             try:
                 import plistlib
-                with open(plist_path, 'rb') as f:
+
+                with open(plist_path, "rb") as f:
                     plist = plistlib.load(f)
                 interval = plist.get("StartInterval", 0)
                 if interval:
@@ -634,11 +661,13 @@ def cmd_system(args, log: DesktopMaestroLogger):
     }
     try:
         import yaml
+
         deps["PyYAML"] = True
     except ImportError:
         pass
 
     import shutil
+
     deps["tag"] = shutil.which("tag") is not None
 
     for dep, installed in deps.items():
@@ -656,6 +685,7 @@ def cmd_system(args, log: DesktopMaestroLogger):
 def cmd_web(args, log: DesktopMaestroLogger):
     """Launch the web UI server."""
     from .server import run_server
+
     log.section("🌐 WEB UI")
     log.info(f"🚀 Starting API server on http://127.0.0.1:{args.port}")
     log.info(f"📱 Start frontend: cd frontend && npm run dev")
@@ -664,6 +694,7 @@ def cmd_web(args, log: DesktopMaestroLogger):
 
     if args.open:
         import webbrowser
+
         webbrowser.open(f"http://127.0.0.1:{args.port}/api/health")
 
     run_server(port=args.port)
@@ -671,6 +702,7 @@ def cmd_web(args, log: DesktopMaestroLogger):
 
 
 # ─── Helper: Progress Bar ───
+
 
 def _progress_bar(percentage: float, width: int = 30) -> str:
     """Generate a visual progress bar."""
@@ -680,6 +712,7 @@ def _progress_bar(percentage: float, width: int = 30) -> str:
 
 
 # ─── Entry Point ───
+
 
 def main(argv: Optional[list] = None) -> int:
     """Main entry point for DesktopMaestro."""

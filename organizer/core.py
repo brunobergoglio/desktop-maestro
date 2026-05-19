@@ -253,9 +253,7 @@ class UndoManager:
         self._cleanup_old_snapshots()
         return path
 
-    def restore_snapshot(
-        self, snapshot_path: str
-    ) -> List[Tuple[str, str, bool]]:
+    def restore_snapshot(self, snapshot_path: str) -> List[Tuple[str, str, bool]]:
         """
         Restore a snapshot (undo an organization).
 
@@ -279,45 +277,47 @@ class UndoManager:
                 if os.path.exists(entry.destination_path):
                     # Integrity check
                     if os.path.isfile(entry.destination_path):
-                        current_hash = self._compute_hash(
-                            entry.destination_path
-                        )
+                        current_hash = self._compute_hash(entry.destination_path)
                         if current_hash != entry.file_hash:
-                            results.append((
-                                entry.destination_path,
-                                "⚠️ File has changed since organization",
-                                False,
-                            ))
+                            results.append(
+                                (
+                                    entry.destination_path,
+                                    "⚠️ File has changed since organization",
+                                    False,
+                                )
+                            )
                             continue
 
                     # Move back to original location
-                    os.makedirs(
-                        os.path.dirname(entry.source_path), exist_ok=True
-                    )
+                    os.makedirs(os.path.dirname(entry.source_path), exist_ok=True)
                     shutil.move(entry.destination_path, entry.source_path)
-                    results.append((
-                        entry.destination_path,
-                        f"✅ Restored to {entry.source_path}",
-                        True,
-                    ))
+                    results.append(
+                        (
+                            entry.destination_path,
+                            f"✅ Restored to {entry.source_path}",
+                            True,
+                        )
+                    )
                 else:
-                    results.append((
-                        entry.destination_path,
-                        "❌ File no longer exists",
-                        False,
-                    ))
+                    results.append(
+                        (
+                            entry.destination_path,
+                            "❌ File no longer exists",
+                            False,
+                        )
+                    )
             except Exception as exc:
-                results.append((
-                    entry.destination_path,
-                    f"❌ Error: {exc}",
-                    False,
-                ))
+                results.append(
+                    (
+                        entry.destination_path,
+                        f"❌ Error: {exc}",
+                        False,
+                    )
+                )
 
         # Clean up empty folders left after restoration
         if entries:
-            self._cleanup_empty_folders(
-                os.path.dirname(entries[0].destination_path)
-            )
+            self._cleanup_empty_folders(os.path.dirname(entries[0].destination_path))
 
         return results
 
@@ -339,20 +339,24 @@ class UndoManager:
                 try:
                     with open(path, "r", encoding="utf-8") as fp:
                         data = json.load(fp)
-                    snapshots.append({
-                        "file": f,
-                        "path": path,
-                        "timestamp": data.get("timestamp", ""),
-                        "description": data.get("description", ""),
-                        "created_at": data.get("created_at", ""),
-                        "entries_count": len(data.get("entries", [])),
-                    })
+                    snapshots.append(
+                        {
+                            "file": f,
+                            "path": path,
+                            "timestamp": data.get("timestamp", ""),
+                            "description": data.get("description", ""),
+                            "created_at": data.get("created_at", ""),
+                            "entries_count": len(data.get("entries", [])),
+                        }
+                    )
                 except Exception:
-                    snapshots.append({
-                        "file": f,
-                        "path": path,
-                        "error": "Could not read snapshot",
-                    })
+                    snapshots.append(
+                        {
+                            "file": f,
+                            "path": path,
+                            "error": "Could not read snapshot",
+                        }
+                    )
 
         return snapshots
 
@@ -366,11 +370,13 @@ class UndoManager:
 
     def _cleanup_old_snapshots(self, max_snapshots: int = 50) -> None:
         """Remove oldest snapshots when exceeding the limit."""
-        snapshots = sorted([
-            os.path.join(self.undo_dir, f)
-            for f in os.listdir(self.undo_dir)
-            if f.startswith("undo_") and f.endswith(".json")
-        ])
+        snapshots = sorted(
+            [
+                os.path.join(self.undo_dir, f)
+                for f in os.listdir(self.undo_dir)
+                if f.startswith("undo_") and f.endswith(".json")
+            ]
+        )
 
         while len(snapshots) > max_snapshots:
             oldest = snapshots.pop(0)
@@ -460,9 +466,7 @@ class DesktopOrganizer:
         desktop_path = self.desktop
 
         if not os.path.isdir(desktop_path):
-            raise NotADirectoryError(
-                f"Directory '{desktop_path}' does not exist."
-            )
+            raise NotADirectoryError(f"Directory '{desktop_path}' does not exist.")
 
         # Verify read permissions (macOS Full Disk Access)
         try:
@@ -543,23 +547,19 @@ class DesktopOrganizer:
                 self.events.fire_progress(processed, total, filename)
 
                 try:
-                    dst = self._move_file(
-                        filepath, category_folder, category
-                    )
+                    dst = self._move_file(filepath, category_folder, category)
                     if dst:
-                        result.moved_files.append((
-                            filepath, dst, category.name
-                        ))
-                        undo_entries.append(UndoEntry(
-                            timestamp=datetime.now().isoformat(),
-                            source_path=filepath,
-                            destination_path=dst,
-                            file_hash=self._compute_hash(filepath),
-                            file_size=os.path.getsize(filepath),
-                        ))
-                        self.events.fire_file_moved(
-                            filepath, dst, category.name
+                        result.moved_files.append((filepath, dst, category.name))
+                        undo_entries.append(
+                            UndoEntry(
+                                timestamp=datetime.now().isoformat(),
+                                source_path=filepath,
+                                destination_path=dst,
+                                file_hash=self._compute_hash(filepath),
+                                file_size=os.path.getsize(filepath),
+                            )
                         )
+                        self.events.fire_file_moved(filepath, dst, category.name)
                     else:
                         # File was skipped (already in destination, etc.)
                         pass
@@ -591,9 +591,7 @@ class DesktopOrganizer:
 
         return result
 
-    def undo(
-        self, snapshot_path: Optional[str] = None
-    ) -> List[Tuple[str, str, bool]]:
+    def undo(self, snapshot_path: Optional[str] = None) -> List[Tuple[str, str, bool]]:
         """
         Undo the last organization operation.
 
@@ -696,9 +694,7 @@ class DesktopOrganizer:
                 pass
         return False
 
-    def _categorize_files(
-        self, files: List[str]
-    ) -> Dict[Category, List[str]]:
+    def _categorize_files(self, files: List[str]) -> Dict[Category, List[str]]:
         """
         Classify files into categories.
 
@@ -863,10 +859,10 @@ class DesktopOrganizer:
         sanitized = sanitized.replace(":", " -")
         sanitized = sanitized.replace("/", "⁄")
         # Remove control characters
-        sanitized = re.sub(r'[\x00-\x1f\x7f]', '', sanitized)
+        sanitized = re.sub(r"[\x00-\x1f\x7f]", "", sanitized)
         # Remove multiple spaces
-        sanitized = re.sub(r'\s+', ' ', sanitized).strip()
-        sanitized = re.sub(r'\s+', ' ', sanitized).strip()
+        sanitized = re.sub(r"\s+", " ", sanitized).strip()
+        sanitized = re.sub(r"\s+", " ", sanitized).strip()
         return sanitized
 
     def _is_file_accessible(self, filepath: str) -> bool:
@@ -881,14 +877,12 @@ class DesktopOrganizer:
     def _compute_hash(self, filepath: str) -> str:
         """Compute SHA-256 hash of a file for integrity verification."""
         h = hashlib.sha256()
-        with open(filepath, 'rb') as f:
-            for chunk in iter(lambda: f.read(65536), b''):
+        with open(filepath, "rb") as f:
+            for chunk in iter(lambda: f.read(65536), b""):
                 h.update(chunk)
         return h.hexdigest()
 
-    def _create_localized_file(
-        self, folder_path: str, display_name: str
-    ) -> None:
+    def _create_localized_file(self, folder_path: str, display_name: str) -> None:
         """
         Create a .localized file so Finder displays emoji folder names correctly.
         """
@@ -929,7 +923,8 @@ class DesktopOrganizer:
             try:
                 subprocess.run(
                     ["tag", "-a", color, folder_path],
-                    capture_output=True, timeout=5,
+                    capture_output=True,
+                    timeout=5,
                 )
             except (subprocess.SubprocessError, FileNotFoundError):
                 pass
@@ -972,6 +967,7 @@ class DesktopOrganizer:
             )
         except (subprocess.SubprocessError, FileNotFoundError):
             pass
+
     @staticmethod
     def request_full_disk_access() -> bool:
         """
@@ -999,6 +995,7 @@ class DesktopOrganizer:
 
 
 # ─── High-level convenience function ───
+
 
 def organize_desktop(
     config_path: Optional[str] = None,
