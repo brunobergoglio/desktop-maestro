@@ -336,16 +336,18 @@ class DesktopMaestroAPI(BaseHTTPRequestHandler):
                             return self._send_json({"path": selected})
 
                 # Fallback: return available common paths
-                return self._send_json({
-                    "path": None,
-                    "suggestions": [
-                        os.path.expanduser("~/Desktop"),
-                        os.path.expanduser("~/Documents"),
-                        os.path.expanduser("~/Downloads"),
-                        os.path.expanduser("~"),
-                    ],
-                    "hint": "Use the web folder browser or type a path manually",
-                })
+                return self._send_json(
+                    {
+                        "path": None,
+                        "suggestions": [
+                            os.path.expanduser("~/Desktop"),
+                            os.path.expanduser("~/Documents"),
+                            os.path.expanduser("~/Downloads"),
+                            os.path.expanduser("~"),
+                        ],
+                        "hint": "Use the web folder browser or type a path manually",
+                    }
+                )
             except Exception as e:
                 return self._send_json({"error": str(e)}, 500)
 

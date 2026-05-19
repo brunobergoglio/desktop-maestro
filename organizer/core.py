@@ -855,7 +855,11 @@ class DesktopOrganizer:
             target_path: The final folder path chosen for this category.
             result: OrganizeResult to record errors.
         """
-        from .categories import translate_folder_name, translate_name, SUPPORTED_LANGUAGES
+        from .categories import (
+            translate_folder_name,
+            translate_name,
+            SUPPORTED_LANGUAGES,
+        )
 
         if self.is_dry_run:
             return
