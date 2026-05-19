@@ -2,16 +2,16 @@
 
 # 🧹 DesktopMaestro
 
-### The smart desktop organizer for **macOS**
+### The smart folder organizer for **macOS**
 
-*"Because your desktop doesn't deserve to be a mess"*
+*Organize any directory — Desktop, Downloads, Documents, or custom folders*
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg?logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![macOS](https://img.shields.io/badge/platform-macOS-black.svg?logo=apple)](https://www.apple.com/macos)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/brunitobe/desktopmaestro/pulls)
-[![GitHub release](https://img.shields.io/github/v/release/brunitobe/desktopmaestro?logo=github)](https://github.com/brunitobe/desktopmaestro/releases)
-[![CI](https://img.shields.io/github/actions/workflow/status/brunitobe/desktopmaestro/ci.yml?logo=githubactions)](https://github.com/brunitobe/desktopmaestro/actions)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/brunobergoglio/desktop-maestro/pulls)
+[![GitHub release](https://img.shields.io/github/v/release/brunobergoglio/desktop-maestro?logo=github)](https://github.com/brunobergoglio/desktop-maestro/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/brunobergoglio/desktop-maestro/ci.yml?logo=githubactions)](https://github.com/brunobergoglio/desktop-maestro/actions)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
@@ -35,7 +35,7 @@
 
 ## ✨ Features
 
-DesktopMaestro instantly transforms your macOS desktop into an organized space. No more hunting for files scattered everywhere.
+DesktopMaestro instantly transforms any macOS folder into an organized space — Desktop, Downloads, Documents, or your own custom directory. No more hunting for files scattered everywhere.
 
 ### 🎯 Before → After
 
@@ -59,6 +59,7 @@ Before                                    After
 
 | Feature | Benefit |
 |---|---|
+| 📂 **Any directory** | Organize Desktop, Downloads, Documents — or any custom path |
 | 🧠 **Smart classification** | 400+ recognized extensions across **22 categories** with priority system |
 | 🔒 **Safety first** | Dry-run mode, full undo snapshots with SHA-256 integrity verification |
 | 🍎 **Made for macOS** | Respects `.DS_Store`, hidden files, system metadata, and Full Disk Access |
@@ -68,7 +69,6 @@ Before                                    After
 | 🔄 **Full undo** | Every operation saves a snapshot to restore everything as it was |
 | 🌐 **Web UI** | Beautiful Next.js dashboard with file explorer, directory tree, and real-time HMR |
 | ⏰ **Automatic** | Scheduled organization with native macOS LaunchAgent |
-| 🌐 **Web UI** | Beautiful Next.js dashboard with file explorer, directory tree, and real-time HMR |
 
 ---
 
@@ -77,7 +77,7 @@ Before                                    After
 ### 🍺 Homebrew (recommended)
 
 ```bash
-brew tap brunitobe/desktopmaestro
+brew tap brunobergoglio/desktop-maestro
 brew install desktopmaestro
 ```
 
@@ -85,10 +85,10 @@ brew install desktopmaestro
 
 ```bash
 # Install from GitHub
-pip install git+https://github.com/brunitobe/desktopmaestro.git
+pip install git+https://github.com/brunobergoglio/desktop-maestro.git
 
 # Or from source
-git clone https://github.com/brunitobe/desktopmaestro.git
+git clone https://github.com/brunobergoglio/desktop-maestro.git
 cd desktopmaestro
 pip install -e .
 ```
@@ -96,7 +96,7 @@ pip install -e .
 ### 📥 Manual installer
 
 ```bash
-curl -LO https://github.com/brunitobe/desktopmaestro/releases/latest/download/install.sh
+curl -LO https://github.com/brunobergoglio/desktop-maestro/releases/latest/download/install.sh
 chmod +x install.sh
 ./install.sh
 ```
@@ -260,14 +260,16 @@ Every file in the explorer shows a **colored badge** with its format, inspired b
 
 ### 🧹 `organize` — The heart of DesktopMaestro
 
-Organizes your desktop files into emoji-themed category folders.
+Organizes any folder into emoji-themed category folders. Works on Desktop, Downloads, Documents, or any custom path.
 
 ```bash
-desktopmaestro organize                    # Organize (with confirmation)
+desktopmaestro organize                    # Organize Desktop (with confirmation)
+desktopmaestro organize --path ~/Downloads # Organize Downloads folder
+desktopmaestro organize --path ~/Documents # Organize Documents folder
+desktopmaestro organize --path /any/path   # Organize any directory
 desktopmaestro organize --dry-run          # Simulate without moving
 desktopmaestro organize --force            # Skip confirmation dialog
 desktopmaestro organize --headless         # No interaction (for scripts/LaunchAgent)
-desktopmaestro organize --path ~/Downloads # Organize a different folder
 ```
 
 **Aliases:** `org`, `o`
@@ -275,10 +277,10 @@ desktopmaestro organize --path ~/Downloads # Organize a different folder
 **Flags:**
 | Flag | Description |
 |---|---|
+| `-p`, `--path PATH` | **Target directory** (default: `~/Desktop`, can be any folder) |
 | `-d`, `--dry-run` | Simulate only, don't move files |
 | `-f`, `--force` | Skip confirmation dialog |
 | `--headless` | No user interaction |
-| `--path PATH` | Custom path (default: `~/Desktop`) |
 | `-V`, `--verbose` | Detailed information |
 
 ### 📊 `stats` — Desktop statistics
@@ -734,7 +736,7 @@ DesktopMaestro has **only one required dependency**: `pyyaml`. Everything else i
 
 ```bash
 # Clone
-git clone https://github.com/brunitobe/desktopmaestro.git
+git clone https://github.com/brunobergoglio/desktop-maestro.git
 cd desktopmaestro
 
 # Virtualenv (recommended)
@@ -844,7 +846,7 @@ Contributions are very welcome! This project grows thanks to the community.
 
 ## 📄 License
 
-**MIT** © [Bruno Toffanetto Verissimo](https://github.com/brunitobe)
+**MIT** © [Bruno Bergoglio](https://github.com/brunobergoglio)
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
@@ -854,16 +856,16 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) for detai
 
 ### ⭐ Enjoying DesktopMaestro?
 
-**Give us a star on [GitHub](https://github.com/brunitobe/desktopmaestro)!** ⭐
+**Give us a star on [GitHub](https://github.com/brunobergoglio/desktop-maestro)!** ⭐
 
 It helps more people discover this project.
 
 ---
 
-**Made with ❤️ for the macOS community**
+**Made with ❤️ by Bruno Bergoglio**
 
-[Report bug](https://github.com/brunitobe/desktopmaestro/issues) •
-[Request feature](https://github.com/brunitobe/desktopmaestro/issues) •
-[Contribute](https://github.com/brunitobe/desktopmaestro/pulls)
+[Report bug](https://github.com/brunobergoglio/desktop-maestro/issues) •
+[Request feature](https://github.com/brunobergoglio/desktop-maestro/issues) •
+[Contribute](https://github.com/brunobergoglio/desktop-maestro/pulls)
 
 </div>

@@ -4,19 +4,19 @@
 # 🧹 DesktopMaestro – Homebrew Formula
 # =============================================================================
 # Instalación:
-#   brew tap brunitobe/desktopmaestro
+#   brew tap brunobergoglio/desktop-maestro
 #   brew install desktopmaestro
 #
 # O directamente:
-#   brew install brunitobe/desktopmaestro/desktopmaestro
+#   brew install brunobergoglio/desktop-maestro/desktopmaestro
 # =============================================================================
 
 class Desktopmaestro < Formula
   include Language::Python::Virtualenv
 
   desc "🧹 Organizador inteligente de escritorio para macOS"
-  homepage "https://github.com/brunitobe/desktopmaestro"
-  url "https://github.com/brunitobe/desktopmaestro/archive/refs/tags/v1.0.0.tar.gz"
+  homepage "https://github.com/brunobergoglio/desktop-maestro"
+  url "https://github.com/brunobergoglio/desktop-maestro/archive/refs/tags/v1.0.0.tar.gz"
   sha256 "REPLACE_WITH_ACTUAL_SHA256"
   license "MIT"
   revision 1

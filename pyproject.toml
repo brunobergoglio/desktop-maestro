@@ -9,7 +9,7 @@ description = "🧹 Smart desktop organizer for macOS — automatically sort fil
 readme = "README.md"
 license = {text = "GPL-3.0-only"}
 authors = [
-    {name = "Bruno Toffanetto Verissimo", email = "brunitobe@gmail.com"},
+    {name = "Bruno Bergoglio", email = "brunitobeoficial@gmail.com"},
 ]
 requires-python = ">=3.9"
 keywords = [

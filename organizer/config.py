@@ -303,7 +303,7 @@ def create_default_config(config_path: str | None = None) -> str:
 
     yaml_content = rf"""# ─── DesktopMaestro Configuration ───
 # Smart desktop organizer for macOS
-# Documentation: https://github.com/brunitobe/desktopmaestro#readme
+# Documentation: https://github.com/brunobergoglio/desktop-maestro#readme
 
 # ─── Paths ───
 desktop_path: "{DEFAULT_DESKTOP_PATH}"

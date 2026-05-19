@@ -147,8 +147,8 @@ homebrew:
 	echo '' >> $$formula; \
 	echo 'class Desktopmaestro < Formula' >> $$formula; \
 	echo '  desc "Smart desktop organizer for macOS"' >> $$formula; \
-	echo '  homepage "https://github.com/brunitobe/desktopmaestro"' >> $$formula; \
-	echo "  url \"https://github.com/brunitobe/desktopmaestro/releases/download/v$(VERSION)/desktopmaestro-$(VERSION)-py3-none-any.whl\"" >> $$formula; \
+	echo '  homepage "https://github.com/brunobergoglio/desktop-maestro"' >> $$formula; \
+	echo "  url \"https://github.com/brunobergoglio/desktop-maestro/releases/download/v$(VERSION)/desktopmaestro-$(VERSION)-py3-none-any.whl\"" >> $$formula; \
 	echo "  sha256 \"$$SHA256\"" >> $$formula; \
 	echo '  license "MIT"' >> $$formula; \
 	echo '' >> $$formula; \

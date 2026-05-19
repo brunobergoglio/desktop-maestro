@@ -3,7 +3,7 @@
 # 🧹 DesktopMaestro – One-line installer
 # =============================================================================
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/brunitobe/desktopmaestro/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/brunobergoglio/desktop-maestro/main/install.sh | bash
 #   # or just:
 #   bash install.sh
 # =============================================================================

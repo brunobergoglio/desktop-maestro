@@ -19,10 +19,10 @@
 	<true/>
 
 	<key>StandardOutPath</key>
-	<string>/Users/brunitobe/Library/Logs/DesktopMaestro/launchd.stdout.log</string>
+	<string>/Users/USER/Library/Logs/DesktopMaestro/launchd.stdout.log</string>
 
 	<key>StandardErrorPath</key>
-	<string>/Users/brunitobe/Library/Logs/DesktopMaestro/launchd.stderr.log</string>
+	<string>/Users/USER/Library/Logs/DesktopMaestro/launchd.stderr.log</string>
 
 	<key>EnvironmentVariables</key>
 	<dict>
