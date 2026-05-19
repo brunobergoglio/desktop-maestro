@@ -66,7 +66,9 @@ Before                                    After
 | 🎨 **Premium experience** | Progress bar, colors, native dialogs, macOS notifications |
 | ⚙️ **100% configurable** | Custom categories, rules, exclusions — all in YAML or JSON |
 | 🔄 **Full undo** | Every operation saves a snapshot to restore everything as it was |
+| 🌐 **Web UI** | Beautiful Next.js dashboard with file explorer, directory tree, and real-time HMR |
 | ⏰ **Automatic** | Scheduled organization with native macOS LaunchAgent |
+| 🌐 **Web UI** | Beautiful Next.js dashboard with file explorer, directory tree, and real-time HMR |
 
 ---
 
@@ -160,6 +162,97 @@ desktopmaestro undo
 ```
 
 > 💡 **Tip:** Always use `--dry-run` the first time. Zero risk, infinite peace of mind.
+
+---
+
+
+
+## 🐳 Docker
+
+Run DesktopMaestro anywhere with Docker — perfect for servers, CI/CD, or if you just don't want to install Python locally.
+
+### 🚀 Production mode
+
+```bash
+# Start everything
+docker compose up -d
+
+# Open the web UI
+open http://localhost:3000
+
+# API health check
+curl http://localhost:7899/api/health
+
+# Stop
+docker compose down
+```
+
+### 🔥 Development mode (hot reload)
+
+```bash
+# Start with hot reload (make changes, see them instantly)
+make docker-dev
+# or: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend
+
+# Open web UI
+open http://localhost:3000
+```
+
+**What you get in dev mode:**
+
+| Component | Changes | Behavior |
+|---|---|---|
+| 🖥️ **Frontend** | Edit `frontend/src/` | HMR — browser refreshes instantly |
+| ⚙️ **API** | Edit `organizer/*.py` | Server auto-restarts via `dev_watch.py` |
+| 📁 **Folders** | Your `~/Desktop`, `~/Downloads`, `~/Documents` | Mounted writable — organizer can move files |
+
+> 💡 **No rebuilds needed.** Just save a file and see the result.
+
+### 🏗️ Stack
+
+| Service | Image | Size | Port |
+|---|---|---|---|
+| **API** (Python) | `python:3.12-alpine` | ~55 MB | `7899` |
+| **Frontend** (Next.js) | `node:22-alpine` | ~150 MB | `3000` |
+
+### 🛡️ Security
+
+- **Non-root user** (`maestro`) in both containers
+- **Read-only filesystem** (`read_only: true`) — only mounted volumes are writable
+- **Resource limits** — CPU and memory caps prevent runaway containers
+- **Healthchecks** — automatic restart on failure
+- **Cache mounts** — pip and pnpm caches persist between builds
+
+---
+
+## 🌐 Web UI
+
+DesktopMaestro includes a beautiful **Next.js web dashboard** for visual file management.
+
+### 📸 Features
+
+| Feature | Description |
+|---|---|
+| 📂 **Directory Tree** | VS Code-style collapsible tree to browse all folders |
+| 📁 **File Explorer** | List or grid view with file type badges |
+| 🏷️ **File Type Badges** | Color-coded badges for 30+ file formats (PDF, DOC, IMG, VIDEO, etc.) |
+| 🔍 **Smart Folder Selector** | Autocomplete, bookmarks (Desktop, Downloads, Documents, Home), recent paths |
+| 📊 **Dashboard** | Stats, file type distribution chart, category preview |
+| 🔧 **Settings** | Configure language, dry-run, notifications, schedule |
+| ↩️ **Undo** | View and restore organization snapshots |
+| 🌐 **Bilingual** | English and Spanish UI |
+| ⌨️ **Keyboard shortcuts** | `⌘K` focus folder input, `↑↓` navigate autocomplete, `Esc` dismiss |
+
+### 🎨 File Type Recognition
+
+The web UI recognizes **30+ file formats** with color-coded badges:
+
+```
+📕 PDF  🔴  📝 DOC  🔵  📊 XLS  🟢  🖼️ PNG  🟣  🎬 VIDEO  🟪
+💻 CODE 🟠  🗜️ ZIP  🟣  🎵 AUDIO 🌹  📋 JSON 🟡  ⬇️ DMG  🔵
+```
+
+Every file in the explorer shows a **colored badge** with its format, inspired by Cursor/shadcn design.
 
 ---
 
@@ -573,12 +666,32 @@ desktopmaestro/
 │   ├── core.py            # ⚙️  Engine: scanning, categorization, file movement
 │   ├── categories.py      # 🧠  Category system (22 predefined + custom)
 │   ├── config.py          # 📋  Configuration management (YAML/JSON)
+│   ├── server.py          # 🌐  HTTP API server (REST endpoints)
 │   └── utils.py           # 🔧  Logging, notifications, LaunchAgent, stats
+├── frontend/
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── page.tsx   # 🖥️  Main dashboard (Next.js 14)
+│   │   │   ├── layout.tsx #     Root layout
+│   │   │   ├── globals.css #    Animations, glassmorphism, utilities
+│   │   │   ├── components/
+│   │   │   │   ├── FolderSelector.tsx  # 🔍 Smart path input + bookmarks
+│   │   │   │   ├── DirectoryTree.tsx   # 🌳 Collapsible folder tree
+│   │   │   │   └── FileTypeBadge.tsx   # 🏷️ Color-coded file badges
+│   │   │   └── api/desktopmaestro/[...path]/route.ts  # API proxy
+│   │   └── lib/api.ts      # 📡 API client (typed fetch wrappers)
+│   ├── Dockerfile          # 🐳 Multi-stage (deps → build → runner)
+│   ├── package.json
+│   └── pnpm-lock.yaml
 ├── config/
 │   └── default_config.yaml    # Default configuration with comments
 ├── tests/
 │   ├── test_organizer.py      # 600+ lines of tests
 │   └── __init__.py
+├── Dockerfile.api             # 🐳 Python API image (Alpine, multi-stage)
+├── docker-compose.yml         # 🐳 Production stack
+├── docker-compose.dev.yml     # 🐳 Dev overrides (hot reload)
+├── dev_watch.py               # 🔥 Auto-reload API on .py changes
 ├── installer/                 # Distribution installer (.dmg, install.sh)
 ├── maestro_assets/            # Brand assets
 ├── run.py                     # Alternative entry point
@@ -646,6 +759,9 @@ make build          # Build pip package
 make dmg            # Create DMG for distribution
 make demo           # Create test folder
 make demo-run       # Organize test folder
+make docker-dev     # 🐳 Start dev mode (hot reload)
+make docker-up      # 🐳 Start production mode
+make docker-down    # 🐳 Stop containers
 make help           # View all commands
 ```
 

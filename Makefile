@@ -279,7 +279,7 @@ docker-restart: docker-down docker-up
 
 docker-dev:
 		@echo "$(BLUE)🐳 Starting in DEV mode (hot reload)...$(NC)"
-		@docker compose -f docker-compose.yml -f docker-compose.override.yml up -d
+		@docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend
 		@echo "$(GREEN)✅ Dev mode running at http://localhost:3000$(NC)"
 		@echo "$(YELLOW)💡 Code changes auto-reload (no rebuild needed)$(NC)"
 

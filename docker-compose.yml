@@ -1,14 +1,16 @@
 # =============================================================================
-# 🧹 DesktopMaestro — Docker Compose
+# 🧹 DesktopMaestro — Docker Compose (Production)
 # =============================================================================
-# Start everything with:  docker compose up -d
-# Open browser at:        http://localhost:3000
-# API directly:           http://localhost:7899/api/health
-# Stop:                   docker compose down
+# Best practices: resource limits, restart policies, healthchecks, networks
+# =============================================================================
+# Start:  docker compose up -d
+# URL:    http://localhost:3000
+# API:    http://localhost:7899/api/health
+# Stop:   docker compose down
 # =============================================================================
 
 services:
-  # ─── Python API Server ───
+  # ─── Python API Server ─────────────────────────────────────────────────────
   api:
     build:
       context: .
@@ -17,20 +19,36 @@ services:
     ports:
       - "7899:7899"
     volumes:
-      # Mount your actual desktop so the container can organize it
-      - ~/Desktop:/root/Desktop:ro
+      # Mount your actual folders (writable — organizer needs to move files)
+      - ~/Desktop:/root/Desktop
+      - ~/Downloads:/root/Downloads
+      - ~/Documents:/root/Documents
       # Persist config and undo snapshots
       - desktopmaestro-data:/root/.config/desktopmaestro
     environment:
       - HOME=/root
     restart: unless-stopped
+    # Security: read-only root filesystem (tmpfs for logs)
+    read_only: true
+    tmpfs:
+      - /root/Library/Logs/DesktopMaestro
+    # Resource limits prevent runaway containers
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "256M"
+        reservations:
+          cpus: "0.25"
+          memory: "64M"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:7899/api/health')"]
-      interval: 30s
+      interval: 5s
       timeout: 3s
-      retries: 3
+      retries: 5
+      start_period: 10s
 
-  # ─── Next.js Frontend ───
+  # ─── Next.js Frontend ──────────────────────────────────────────────────────
   frontend:
     build:
       context: ./frontend
@@ -42,15 +60,28 @@ services:
       - "3000:3000"
     environment:
       - API_URL=http://api:7899
+      - NODE_ENV=production
     depends_on:
       api:
         condition: service_healthy
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "512M"
+        reservations:
+          cpus: "0.25"
+          memory: "128M"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/"]
-      interval: 30s
+      interval: 10s
       timeout: 3s
-      retries: 3
+      retries: 5
+      start_period: 15s
 
 volumes:
   desktopmaestro-data:

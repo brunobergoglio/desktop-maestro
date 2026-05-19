@@ -1,7 +1,10 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { api, DesktopStats, CategoryInfo, SnapshotInfo, ConfigData, ScanResult } from '@/lib/api';
+import FolderSelector from '@/app/components/FolderSelector';
+import DirectoryTree from '@/app/components/DirectoryTree';
+import FileTypeBadge, { FilePreviewCard } from '@/app/components/FileTypeBadge';
 
 // ─── Types ───
 type Tab = 'dashboard' | 'categories' | 'config' | 'undo';
@@ -47,6 +50,7 @@ export default function Home() {
   const [scanLoading, setScanLoading] = useState(false);
   const [showFileExplorer, setShowFileExplorer] = useState(true);
   const [configSaving, setConfigSaving] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
   // ─── Fetch helpers ───
   const checkHealth = useCallback(async () => {
@@ -121,28 +125,52 @@ export default function Home() {
     await fetchScan(path);
   }, [fetchScan]);
 
-  // ─── Init ───
-  useEffect(() => { checkHealth(); }, [checkHealth]);
+  // ─── Keyboard shortcuts ───
   useEffect(() => {
-    if (connected) {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd+K or Ctrl+K → focus folder input
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        const input = document.querySelector<HTMLInputElement>('[data-folder-input]');
+        input?.focus();
+        input?.select();
+      }
+      // Escape → clear any selection/modal
+      if (e.key === 'Escape') {
+        setOrgResult(null);
+        setError(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // ─── Init (only once on connect) ───
+  useEffect(() => { checkHealth(); }, [checkHealth]);
+  const initialLoadDone = useRef(false);
+  useEffect(() => {
+    if (connected && !initialLoadDone.current) {
+      initialLoadDone.current = true;
       fetchStats();
       fetchCategories();
       fetchScan('~/Desktop');
     }
-  }, [connected, fetchStats, fetchCategories, fetchScan]);
+  }, [connected]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Organize ───
   const handleOrganize = async (dryRun: boolean) => {
     setLoading(true);
     setError(null);
     setOrgResult(null);
+    const targetPath = orgPath || '~/Desktop';
     try {
-      const res = await api.organize(dryRun, lang, orgPath || undefined);
+      const res = await api.organize(dryRun, lang, targetPath);
       const mode = dryRun ? '🔍 Dry Run' : '✅ Organized';
-      setOrgResult(`${mode}: ${res.success_count} files moved, ${res.skipped_count} skipped, ${res.error_count} errors in ${res.duration}`);
-      if (!dryRun) { fetchSnapshots(); fetchStats(); }
+      const folderLabel = targetPath.replace('/root/', '~/').replace('/root', '~');
+      setOrgResult(`${mode} ${folderLabel}: ${res.success_count} files moved, ${res.skipped_count} skipped, ${res.error_count} errors in ${res.duration}`);
+      if (!dryRun) { fetchSnapshots(); fetchStats(); fetchScan(); }
     } catch (e: any) {
-      setError(e.message);
+      setError(`Error organizing ${targetPath}: ${e.message}`);
     } finally {
       setLoading(false);
     }
@@ -286,131 +314,226 @@ export default function Home() {
               </div>
             )}
 
-            {/* ── File Explorer ── */}
-            <div className="card">
-              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                📂 {lang === 'en' ? 'File Explorer' : 'Explorador de Archivos'}
-              </h2>
-              <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 overflow-hidden">
-                {/* Path bar with breadcrumbs */}
-                <div className="px-4 py-2.5 border-b border-slate-700/50 flex items-center gap-1 bg-slate-800/80">
-                  <span className="text-lg flex-shrink-0">📁</span>
-                  <div className="flex-1 flex items-center gap-1 overflow-x-auto text-sm font-mono scrollbar-thin">
-                    {(scanData?.path || orgPath || '~/Desktop').split('/').filter(Boolean).map((part, i, parts) => {
-                      const isLast = i === parts.length - 1;
-                      const pathSoFar = '/' + parts.slice(0, i + 1).join('/');
-                      return (
-                        <span key={i} className="flex items-center gap-1 whitespace-nowrap">
-                          <span className="text-slate-600">/</span>
-                          {isLast ? (
-                            <span className="text-slate-200">{part}</span>
-                          ) : (
-                            <button
-                              onClick={() => navigateToPath(pathSoFar)}
-                              className="text-slate-400 hover:text-maestro-400 transition-colors"
-                            >
-                              {part}
-                            </button>
-                          )}
-                        </span>
-                      );
-                    })}
-                  </div>
-                  <button
-                    onClick={navigateUp}
-                    disabled={!scanData?.parent}
-                    className="text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed text-sm px-2 py-1 rounded-lg hover:bg-slate-700 transition-colors flex-shrink-0"
-                    title={lang === 'en' ? 'Go up' : 'Subir'}
-                  >
-                    ⬆
-                  </button>
-                  <button
-                    onClick={() => fetchScan()}
-                    className="text-slate-400 hover:text-white text-sm px-2 py-1 rounded-lg hover:bg-slate-700 transition-colors flex-shrink-0"
-                    title={lang === 'en' ? 'Refresh' : 'Actualizar'}
-                  >
-                    ↻
-                  </button>
-                </div>
+            {/* ── File Browser (Tree + Explorer) ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* Directory Tree (sidebar) */}
+              <div className="lg:col-span-1 order-2 lg:order-1">
+                <DirectoryTree
+                  currentPath={orgPath}
+                  onNavigate={(path) => { setOrgPath(path); fetchScan(path); }}
+                  onSelect={(path) => setOrgPath(path)}
+                  lang={lang}
+                />
+              </div>
 
-                {/* Items */}
-                {scanLoading ? (
-                  <div className="py-12 text-center text-slate-500">
-                    <span className="text-2xl">⏳</span>
-                    <p className="mt-2 text-sm">
-                      {lang === 'en' ? 'Scanning folder...' : 'Escaneando carpeta...'}
-                    </p>
-                  </div>
-                ) : scanData && scanData.items.length > 0 ? (
-                  <div className="divide-y divide-slate-700/30 max-h-96 overflow-y-auto">
-                    {scanData.items.map(item => (
-                      <div
-                        key={item.name}
-                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-700/30 transition-colors text-sm"
-                      >
-                        {/* Icon */}
-                        <span className="text-lg w-8 text-center flex-shrink-0">
-                          {item.is_dir ? '📁' : (item.category?.icon || '📄')}
-                        </span>
-
-                        {/* Name */}
-                        {item.is_dir ? (
-                          <button
-                            onClick={() => navigateToFolder(item.name)}
-                            className="font-medium text-slate-200 hover:text-maestro-400 transition-colors truncate flex-1 text-left"
-                          >
-                            {item.name}
-                          </button>
-                        ) : (
-                          <span className="text-slate-300 truncate flex-1 font-mono text-xs">
-                            {item.name}
-                          </span>
-                        )}
-
-                        {/* Size */}
-                        <span className="text-slate-500 text-xs w-20 text-right flex-shrink-0 hidden sm:block">
-                          {item.size_human || '-'}
-                        </span>
-
-                        {/* Modified */}
-                        <span className="text-slate-500 text-xs w-24 text-right flex-shrink-0 hidden md:block">
-                          {item.modified ? item.modified.split(' ')[0] : ''}
-                        </span>
-
-                        {/* Category */}
-                        {!item.is_dir && item.category && (
-                          <span className="text-xs text-slate-400 w-28 text-right flex-shrink-0 hidden lg:block">
-                            {item.category.icon} {item.category.localized_name}
-                          </span>
-                        )}
-
-                        {/* Folder click hint */}
-                        {item.is_dir && (
-                          <span className="text-xs text-slate-600 flex-shrink-0 hidden sm:block">
-                            →
-                          </span>
-                        )}
+              {/* File Explorer (main) */}
+              <div className="lg:col-span-2 order-1 lg:order-2">
+                <div className="card h-full flex flex-col">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-lg font-semibold flex items-center gap-2">
+                      📂 {lang === 'en' ? 'Contents' : 'Contenido'}
+                    </h2>
+                    <div className="flex items-center gap-2">
+                      {/* View mode toggle */}
+                      <div className="flex bg-slate-800/80 rounded-lg border border-slate-700/50 overflow-hidden">
+                        <button
+                          onClick={() => setViewMode('list')}
+                          className={`px-2 py-1 text-xs transition-colors ${
+                            viewMode === 'list'
+                              ? 'bg-maestro-600/30 text-maestro-300'
+                              : 'text-slate-500 hover:text-slate-300'
+                          }`}
+                          title={lang === 'en' ? 'List view' : 'Vista lista'}
+                        >
+                          ☰
+                        </button>
+                        <button
+                          onClick={() => setViewMode('grid')}
+                          className={`px-2 py-1 text-xs transition-colors ${
+                            viewMode === 'grid'
+                              ? 'bg-maestro-600/30 text-maestro-300'
+                              : 'text-slate-500 hover:text-slate-300'
+                          }`}
+                          title={lang === 'en' ? 'Grid view' : 'Vista cuadrícula'}
+                        >
+                          ⊞
+                        </button>
                       </div>
-                    ))}
+                      {scanData && (
+                        <span className="text-xs text-slate-500 bg-slate-800/60 px-2.5 py-1 rounded-lg">
+                          {scanData.name || scanData.path}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                ) : scanData ? (
-                  <div className="py-8 text-center text-slate-500 text-sm">
-                    {lang === 'en' ? 'Empty folder' : 'Carpeta vacía'}
-                  </div>
-                ) : (
-                  <div className="py-8 text-center text-slate-500 text-sm">
-                    {lang === 'en' ? 'Enter a path and press ↵' : 'Ingresá una ruta y presioná ↵'}
-                  </div>
-                )}
 
-                {/* Footer stats */}
-                {scanData && (
-                  <div className="px-4 py-2 border-t border-slate-700/50 bg-slate-800/80 flex items-center gap-4 text-xs text-slate-500">
-                    <span>📊 <strong className="text-slate-400">{scanData.total_files}</strong> {lang === 'en' ? 'files' : 'archivos'}</span>
-                    <span>💾 <strong className="text-slate-400">{scanData.total_size_human}</strong></span>
-                    <span>📂 <strong className="text-slate-400">{Object.keys(scanData.by_category || {}).length}</strong> {lang === 'en' ? 'categories' : 'categorías'}</span>
+                  <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 overflow-hidden flex-1">
+                    {/* Path bar with breadcrumbs */}
+                    <div className="px-4 py-2.5 border-b border-slate-700/50 flex items-center gap-1 bg-slate-800/80">
+                      <span className="text-lg flex-shrink-0">📁</span>
+                      <div className="flex-1 flex items-center gap-1 overflow-x-auto text-sm font-mono scrollbar-thin">
+                        {(scanData?.path || orgPath || '~/Desktop').split('/').filter(Boolean).map((part, i, parts) => {
+                          const isLast = i === parts.length - 1;
+                          const pathSoFar = '/' + parts.slice(0, i + 1).join('/');
+                          return (
+                            <span key={i} className="flex items-center gap-1 whitespace-nowrap">
+                              <span className="text-slate-600">/</span>
+                              {isLast ? (
+                                <span className="text-slate-200">{part}</span>
+                              ) : (
+                                <button
+                                  onClick={() => navigateToPath(pathSoFar)}
+                                  className="text-slate-400 hover:text-maestro-400 transition-colors"
+                                >
+                                  {part}
+                                </button>
+                              )}
+                            </span>
+                          );
+                        })}
+                      </div>
+                      <button
+                        onClick={navigateUp}
+                        disabled={!scanData?.parent}
+                        className="text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed text-sm px-2 py-1 rounded-lg hover:bg-slate-700 transition-colors flex-shrink-0"
+                        title={lang === 'en' ? 'Go up' : 'Subir'}
+                      >
+                        ⬆
+                      </button>
+                      <button
+                        onClick={() => fetchScan()}
+                        className="text-slate-400 hover:text-white text-sm px-2 py-1 rounded-lg hover:bg-slate-700 transition-colors flex-shrink-0"
+                        title={lang === 'en' ? 'Refresh' : 'Actualizar'}
+                      >
+                        ↻
+                      </button>
+                    </div>
+
+                    {/* Items */}
+                    {scanLoading ? (
+                      <div className="py-16 text-center text-slate-500">
+                        <span className="text-3xl animate-pulse">⏳</span>
+                        <p className="mt-3 text-sm">
+                          {lang === 'en' ? 'Scanning folder...' : 'Escaneando carpeta...'}
+                        </p>
+                      </div>
+                    ) : scanData && scanData.items.length > 0 ? (
+                      viewMode === 'grid' ? (
+                        /* ── Grid View ── */
+                        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 p-4 max-h-80 overflow-y-auto scrollbar-thin">
+                          {/* Folders */}
+                          {scanData.items.filter(i => i.is_dir).map((item, idx) => (
+                            <button
+                              key={`dir-${idx}`}
+                              onClick={() => navigateToFolder(item.name)}
+                              className="group flex flex-col items-center gap-1.5 p-3 rounded-xl
+                                bg-slate-800/40 border border-slate-700/30
+                                hover:bg-slate-700/40 hover:border-maestro-500/30
+                                transition-all duration-200"
+                            >
+                              <span className="text-3xl">📁</span>
+                              <span className="text-[10px] text-slate-400 group-hover:text-slate-200
+                                text-center truncate w-full leading-tight transition-colors">
+                                {item.name}
+                              </span>
+                            </button>
+                          ))}
+                          {/* Files */}
+                          {scanData.items.filter(i => !i.is_dir).map((item, idx) => (
+                            <div
+                              key={`file-${idx}`}
+                              className="group flex flex-col items-center gap-1.5 p-2 rounded-xl
+                                hover:bg-slate-700/20 transition-all duration-200"
+                            >
+                              <FilePreviewCard
+                                extension={item.extension}
+                                filename={item.name}
+                                size="sm"
+                              />
+                              <span className="text-[10px] text-slate-500 text-center truncate w-full leading-tight">
+                                {item.name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        /* ── List View (with FileTypeBadge) ── */
+                        <div className="divide-y divide-slate-700/30 max-h-80 overflow-y-auto scrollbar-thin">
+                          {/* Folders first */}
+                          {scanData.items.filter(i => i.is_dir).map((item, idx) => (
+                            <div
+                              key={`dir-${idx}`}
+                              className="file-item flex items-center gap-3 px-4 py-2.5 text-sm"
+                            >
+                              <span className="text-lg w-8 text-center flex-shrink-0">📁</span>
+                              <button
+                                onClick={() => navigateToFolder(item.name)}
+                                className="font-medium text-slate-200 hover:text-maestro-400 transition-colors truncate flex-1 text-left"
+                              >
+                                {item.name}
+                              </button>
+                              <span className="text-slate-500 text-xs w-20 text-right flex-shrink-0 hidden sm:block">
+                                {item.size_human || '-'}
+                              </span>
+                              <span className="text-slate-500 text-xs w-24 text-right flex-shrink-0 hidden md:block">
+                                {item.modified ? item.modified.split(' ')[0] : ''}
+                              </span>
+                              <span className="text-xs text-slate-600 flex-shrink-0 hidden sm:block">→</span>
+                            </div>
+                          ))}
+                          {/* Files with FileTypeBadge */}
+                          {scanData.items.filter(i => !i.is_dir).map((item, idx) => (
+                            <div
+                              key={`file-${idx}`}
+                              className="file-item flex items-center gap-3 px-4 py-2.5 text-sm"
+                            >
+                              <FileTypeBadge
+                                extension={item.extension}
+                                filename={item.name}
+                                size="sm"
+                              />
+                              <span className="text-slate-300 truncate flex-1 font-mono text-xs">
+                                {item.name}
+                              </span>
+                              <span className="text-slate-500 text-xs w-20 text-right flex-shrink-0 hidden sm:block">
+                                {item.size_human || '-'}
+                              </span>
+                              <span className="text-slate-500 text-xs w-24 text-right flex-shrink-0 hidden md:block">
+                                {item.modified ? item.modified.split(' ')[0] : ''}
+                              </span>
+                              {item.category && (
+                                <span className="text-xs text-slate-400 w-28 text-right flex-shrink-0 hidden lg:block">
+                                  {item.category.icon} {item.category.localized_name}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    ) : scanData ? (
+                      <div className="py-16 text-center text-slate-500">
+                        <div className="text-4xl mb-3 empty-state-icon">📂</div>
+                        <p className="text-sm">{lang === 'en' ? 'Empty folder' : 'Carpeta vacía'}</p>
+                      </div>
+                    ) : (
+                      <div className="py-16 text-center text-slate-500">
+                        <div className="text-4xl mb-3 empty-state-icon">🔍</div>
+                        <p className="text-sm">
+                          {lang === 'en' ? 'Select a folder from the tree' : 'Seleccioná una carpeta del árbol'}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Footer stats */}
+                    {scanData && (
+                      <div className="px-4 py-2 border-t border-slate-700/50 bg-slate-800/80 flex items-center gap-4 text-xs text-slate-500">
+                        <span>📊 <strong className="text-slate-400">{scanData.total_files}</strong> {lang === 'en' ? 'files' : 'archivos'}</span>
+                        <span>💾 <strong className="text-slate-400">{scanData.total_size_human}</strong></span>
+                        <span>📂 <strong className="text-slate-400">{Object.keys(scanData.by_category || {}).length}</strong> {lang === 'en' ? 'categories' : 'categorías'}</span>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             </div>
 
@@ -419,31 +542,31 @@ export default function Home() {
               <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
                 {ICONS.organize} {lang === 'en' ? 'Actions' : 'Acciones'}
               </h2>
-              <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
-                <div className="flex-1 w-full sm:w-auto min-w-[200px]">
-                  <label className="block text-xs text-slate-400 mb-1">
-                    {lang === 'en' ? 'Target folder' : 'Carpeta destino'}
-                  </label>
-                  <input
-                    value={orgPath}
-                    onChange={e => setOrgPath(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') fetchScan(orgPath); }}
-                    placeholder={lang === 'en' ? '~/Desktop' : '~/Escritorio'}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-maestro-500 transition-colors"
-                  />
+              <div className="space-y-4">
+                {/* Folder Selector — AGI Level */}
+                <FolderSelector
+                  value={orgPath}
+                  onChange={setOrgPath}
+                  onBrowse={(path) => { setOrgPath(path); fetchScan(path); }}
+                  loading={scanLoading}
+                  lang={lang}
+                />
+
+                {/* Action Buttons */}
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button onClick={() => handleOrganize(false)} disabled={loading || scanLoading}
+                    className="btn-primary">
+                    {loading ? '⏳...' : '🧹'} {lang === 'en' ? 'Organize Now' : 'Organizar Ahora'}
+                  </button>
+                  <button onClick={() => handleOrganize(true)} disabled={loading || scanLoading}
+                    className="btn-secondary">
+                    🔍 {lang === 'en' ? 'Simulate' : 'Simular'}
+                  </button>
+                  <button onClick={() => { fetchStats(); fetchScan(); fetchCategories(); }}
+                    className="btn-secondary">
+                    🔄 {lang === 'en' ? 'Refresh' : 'Actualizar'}
+                  </button>
                 </div>
-                <button onClick={() => handleOrganize(false)} disabled={loading || scanLoading}
-                  className="btn-primary whitespace-nowrap">
-                  {loading ? '⏳...' : '🧹'} {lang === 'en' ? 'Organize Now' : 'Organizar Ahora'}
-                </button>
-                <button onClick={() => handleOrganize(true)} disabled={loading || scanLoading}
-                  className="btn-secondary whitespace-nowrap">
-                  🔍 {lang === 'en' ? 'Simulate' : 'Simular'}
-                </button>
-                <button onClick={() => { fetchStats(); fetchScan(); fetchCategories(); }}
-                  className="btn-secondary whitespace-nowrap">
-                  🔄 {lang === 'en' ? 'Refresh' : 'Actualizar'}
-                </button>
               </div>
             </div>
 

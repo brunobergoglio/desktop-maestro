@@ -1,29 +1,54 @@
+# syntax=docker/dockerfile:1
 # =============================================================================
-# DesktopMaestro — Python API Server
+# 🧹 DesktopMaestro — Python API Server (Alpine)
 # =============================================================================
-FROM python:3.12-slim
+# Best practices: multi-stage, non-root, layer caching, minimal size (~55 MB)
+# =============================================================================
+
+FROM python:3.12-alpine AS builder
 
 WORKDIR /app
 
-# Copy only dependency files first (layer caching)
+# Install only what's needed to build
 COPY pyproject.toml README.md ./
 
-# Install dependencies (cached unless pyproject.toml changes)
-RUN pip install --no-cache-dir -e . 2>/dev/null; exit 0
+# Layer 1: Install runtime deps (cached unless pyproject.toml changes)
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-cache-dir pyyaml>=6.0
 
-# Copy application source
+# Layer 2: Copy application source (frequently invalidated)
 COPY organizer/ organizer/
 COPY config/ config/
 
-# Re-install with source
-RUN pip install --no-cache-dir -e .
+# Layer 3: Register the package (fast, deps already installed above)
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-cache-dir -e .
 
-# Expose API port
+# ─── Runtime stage ────────────────────────────────────────────────────────────
+FROM python:3.12-alpine
+
+# Security: non-root user
+RUN addgroup -S maestro && adduser -S -G maestro maestro
+
+WORKDIR /app
+
+# Copy only what's needed — no build tools, no cache
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+COPY --from=builder /app/organizer /app/organizer
+COPY --from=builder /app/config /app/config
+
+# Security & hygiene
+RUN rm -rf /root/.cache /tmp/* && \
+    find /usr/local -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
+
+# Drop privileges
+USER maestro
+
 EXPOSE 7899
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s \
+# Health check (interval reduzido para startup detection más rápido)
+HEALTHCHECK --interval=5s --timeout=3s --start-period=8s --retries=5 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:7899/api/health')" || exit 1
 
-# Run API server
 CMD ["desktopmaestro", "web", "--port", "7899"]

@@ -306,6 +306,49 @@ class DesktopMaestroAPI(BaseHTTPRequestHandler):
                     500,
                 )
 
+        if path == "/api/pick-folder" or path == "/pick-folder":
+            """Show a native macOS folder picker dialog via osascript.
+
+            Falls back to web-based folder selection when osascript
+            is unavailable (e.g. Docker/Linux).
+            """
+            try:
+                # Try native dialog via osascript (macOS only)
+                if sys.platform == "darwin":
+                    script = """
+                    tell application "System Events"
+                        activate
+                    end tell
+                    choose folder with prompt "Select a folder to organize"
+                    """
+                    result = subprocess.run(
+                        ["osascript", "-e", script],
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                    )
+                    if result.returncode == 0:
+                        selected = result.stdout.strip()
+                        # osascript returns "Macintosh HD:Users:..."
+                        # Convert to POSIX path
+                        selected = selected.replace(":", "/")
+                        if selected.startswith("/"):
+                            return self._send_json({"path": selected})
+
+                # Fallback: return available common paths
+                return self._send_json({
+                    "path": None,
+                    "suggestions": [
+                        os.path.expanduser("~/Desktop"),
+                        os.path.expanduser("~/Documents"),
+                        os.path.expanduser("~/Downloads"),
+                        os.path.expanduser("~"),
+                    ],
+                    "hint": "Use the web folder browser or type a path manually",
+                })
+            except Exception as e:
+                return self._send_json({"error": str(e)}, 500)
+
         self._send_json({"error": "Not found"}, 404)
 
     def do_POST(self):

@@ -1,4 +1,4 @@
-# Python
+# ─── Python ───
 __pycache__/
 *.pyc
 *.pyo
@@ -6,32 +6,49 @@ __pycache__/
 .eggs/
 build/
 dist/
+*.whl
+*.egg
 
-# Git
+# ─── Git ───
 .git/
 .gitignore
+.gitattributes
+.github/
 
-# Tests
+# ─── Tests & CI ───
 tests/
 .pytest_cache/
 htmlcov/
 .coverage
+.coverage.*
+coverage/
 
-# Frontend (built separately)
+# ─── Frontend (when building API — frontend has its own context) ───
 frontend/node_modules/
 frontend/.next/
 frontend/out/
+frontend/coverage/
+frontend/.turbo/
 
-# OS
+# ─── OS ───
 .DS_Store
 Thumbs.db
-
-# IDE
-.vscode/
-.idea/
-
-# Temp
-*.tmp
 *.swp
 *.swo
 *~
+
+# ─── IDE ───
+.vscode/
+.idea/
+*.sublime-*
+
+# ─── Temp ───
+*.tmp
+*.temp
+*.log
+.cache/
+
+# ─── Docs (not needed at runtime) ───
+*.md
+!README.md
+LICENSE

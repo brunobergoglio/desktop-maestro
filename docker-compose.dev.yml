@@ -1,24 +1,74 @@
 # =============================================================================
-# DesktopMaestro — Development Override
+# 🧹 DesktopMaestro — Development Override (Full Hot Reload)
 # =============================================================================
-# Use this for faster development: 
-#   docker compose -f docker-compose.yml -f docker-compose.override.yml up -d
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+#   make docker-dev
 # =============================================================================
+# 🔥 Frontend: HMR (instant browser refresh on src/ changes)
+# 🔥 API:      Auto-reloads when .py files change (via dev_watch.py)
+# 🔥 No rebuild needed! Just save a file and see changes instantly.
+# =============================================================================
+
+x-debug: &debug
+  stdin_open: true
+  tty: true
+
 services:
   api:
-    # Mount source for hot reload (no rebuild needed on code changes)
+    <<: *debug
+    build:
+      # Use builder stage (has source, no production runtime stage)
+      target: builder
+    # Use dev watch script that auto-restarts on .py changes
+    command: python /app/dev_watch.py web --port 7899
     volumes:
+      # Mount all source for hot reload
       - ./organizer:/app/organizer
       - ./config:/app/config
+      - ./dev_watch.py:/app/dev_watch.py
+      - ./pyproject.toml:/app/pyproject.toml
+      # Mount user folders (writable — organizer needs to move files)
+      - ~/Desktop:/root/Desktop
+      - ~/Downloads:/root/Downloads
+      - ~/Documents:/root/Documents
+      # Persist config
+      - desktopmaestro-data:/root/.config/desktopmaestro
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DESKTOPMAESTRO_DEBUG=1
+      - HOME=/root
 
   frontend:
-    # Development mode with hot reload
+    <<: *debug
     build:
-      target: builder
+      # Use deps stage (has pnpm install, no production build → faster dev)
+      target: deps
       args:
         - API_URL=http://api:7899
-    command: npx next dev -p 3000
+    # Dev mode needs read-write (corepack/pnpm create symlinks)
+    read_only: false
+    # Run dev server with Hot Module Replacement
+    command: >
+      sh -c "
+        pnpm install --frozen-lockfile 2>/dev/null || true &&
+        echo '🔥 HMR enabled — edit src/ and see changes instantly' &&
+        pnpm dev -p 3000
+      "
     volumes:
+      # Source code (HMR)
       - ./frontend/src:/app/src
       - ./frontend/public:/app/public
+      # Config files (Next.js needs these to detect changes)
+      - ./frontend/next.config.js:/app/next.config.js
+      - ./frontend/tsconfig.json:/app/tsconfig.json
+      - ./frontend/tailwind.config.js:/app/tailwind.config.js
+      - ./frontend/postcss.config.js:/app/postcss.config.js
       - ./frontend/package.json:/app/package.json
+      - ./frontend/pnpm-lock.yaml:/app/pnpm-lock.yaml
+    environment:
+      # Required for HMR to work inside Docker
+      - WATCHPACK_POLLING=true
+      - CHOKIDAR_USEPOLLING=true
+      - NODE_ENV=development
+      - NEXT_TELEMETRY_DISABLED=1
