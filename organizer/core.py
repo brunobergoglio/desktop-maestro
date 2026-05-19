@@ -25,6 +25,7 @@ from .categories import (
     MACOS_SYSTEM_FILES,
     OTHERS,
     Category,
+    find_existing_localized_folder,
     get_category_folder_name,
     is_macos_system_file,
     smart_categorize,
@@ -508,7 +509,13 @@ class DesktopOrganizer:
                 "   Or try: desktopmaestro organize --path ~/Downloads"
             )
 
-        # 1. Collect files from desktop
+        # 1. Consolidate all category folders (language-agnostic merge)
+        #    This runs even if there are no files to process — it renames
+        #    existing variant folders (e.g. "🖼️ Imágenes" → "🖼️ Images")
+        #    to match the current language, and merges any leftover duplicates.
+        self._consolidate_all_folders(desktop_path, result)
+
+        # 2. Collect files from desktop
         files_to_process = self._scan_desktop(desktop_path)
         result.total_files_found = len(files_to_process)
 
@@ -517,15 +524,15 @@ class DesktopOrganizer:
             result.end_time = time.time()
             return result
 
-        # 2. Categorize files
+        # 3. Categorize files
         categorized = self._categorize_files(files_to_process)
 
-        # 3. Create destination folders
+        # 4. Create destination folders for categories that have files
         target_categories = self._ensure_category_folders(
             desktop_path, categorized, result
         )
 
-        # 4. Move files
+        # 5. Move files
         undo_entries = []
         total = len(files_to_process)
         processed = 0
@@ -694,6 +701,51 @@ class DesktopOrganizer:
                 pass
         return False
 
+    def _consolidate_all_folders(
+        self,
+        desktop_path: str,
+        result: OrganizeResult,
+    ) -> None:
+        """Consolidate ALL category folders to match current language.
+
+        Runs unconditionally, even when there are no loose files to organize.
+        For each category, renames existing localized variants (e.g., "🖼️ Imágenes"
+        → "🖼️ Images") to match the currently configured language, and merges
+        any leftover duplicate variants.
+
+        This prevents duplicate folders when the user switches UI language.
+        """
+        if not os.path.isdir(desktop_path):
+            return
+
+        for category in DEFAULT_CATEGORIES:
+            if self._abort_flag:
+                break
+            if category.name in ("macOS System",):
+                continue
+
+            desired_name = self.config.resolve_category_folder(category)
+            desired_path = os.path.join(desktop_path, desired_name)
+
+            if os.path.exists(desired_path):
+                # Already matches — just merge any leftover variants
+                self._consolidate_variants(desktop_path, category, desired_path, result)
+                continue
+
+            # Check for a different-language variant to rename
+            existing = find_existing_localized_folder(desktop_path, category)
+            if existing:
+                rename_ok = False
+                if not self.is_dry_run:
+                    try:
+                        os.rename(existing, desired_path)
+                        rename_ok = True
+                    except OSError as exc:
+                        result.errors.append((existing, str(exc)))
+                # Consolidate into whichever path actually exists
+                target = desired_path if rename_ok else existing
+                self._consolidate_variants(desktop_path, category, target, result)
+
     def _categorize_files(self, files: List[str]) -> Dict[Category, List[str]]:
         """
         Classify files into categories.
@@ -752,32 +804,104 @@ class DesktopOrganizer:
             if not files:
                 continue
 
-            folder_name = self.config.resolve_category_folder(category)
-            folder_path = os.path.join(desktop_path, folder_name)
+            desired_name = self.config.resolve_category_folder(category)
+            desired_path = os.path.join(desktop_path, desired_name)
 
-            if not os.path.exists(folder_path):
+            if os.path.exists(desired_path):
+                # Already exists in the correct language
+                folder_path = desired_path
+            else:
+                # Create the folder
+                folder_path = desired_path
                 if self.is_dry_run:
-                    result.categories_created.append(folder_name)
+                    result.categories_created.append(desired_name)
                 else:
                     try:
                         os.makedirs(folder_path, exist_ok=True)
-                        result.categories_created.append(folder_name)
+                        result.categories_created.append(desired_name)
                         self.events.fire_category_created(folder_path)
-
-                        # Create .localized file so Finder displays emoji names correctly
-                        self._create_localized_file(folder_path, folder_name)
-
-                        # Add macOS color tag (optional)
+                        self._create_localized_file(folder_path, desired_name)
                         if self.config.add_tags_to_folders:
                             self._add_macos_tag(folder_path, category.name)
-
                     except OSError as exc:
                         result.errors.append((folder_path, str(exc)))
                         continue
 
+            # Final safety net: merge any leftover duplicate variants
+            self._consolidate_variants(desktop_path, category, folder_path, result)
+
             target_folders[category.name] = folder_path
 
         return target_folders
+
+    def _consolidate_variants(
+        self,
+        desktop_path: str,
+        category: Category,
+        target_path: str,
+        result: OrganizeResult,
+    ) -> None:
+        """Merge any leftover duplicate language-variant folders into target_path.
+
+        When switching UI languages, the same category may have been created
+        under different names (e.g., "🖼️ Images" and "🖼️ Imágenes").
+        After the primary folder has been determined (and possibly renamed),
+        this method moves files from any remaining duplicate variants into the
+        target folder and removes the now-empty duplicates.
+
+        Args:
+            desktop_path: The parent directory being organized.
+            category: The Category being processed.
+            target_path: The final folder path chosen for this category.
+            result: OrganizeResult to record errors.
+        """
+        from .categories import translate_folder_name, translate_name, SUPPORTED_LANGUAGES
+
+        if self.is_dry_run:
+            return
+
+        # Build all possible names for this category
+        variant_names: Set[str] = set()
+        for lang in SUPPORTED_LANGUAGES:
+            variant_names.add(translate_folder_name(category.name, category.icon, lang))
+            variant_names.add(translate_name(category.name, lang))
+
+        target_name = os.path.basename(target_path)
+
+        try:
+            for entry in os.listdir(desktop_path):
+                if entry == target_name:
+                    continue
+                full = os.path.join(desktop_path, entry)
+                if os.path.isdir(full) and entry in variant_names:
+                    # Found a duplicate — merge into target_path
+                    for item in os.listdir(full):
+                        src = os.path.join(full, item)
+                        dst = os.path.join(target_path, item)
+                        try:
+                            if os.path.isfile(src):
+                                if not os.path.exists(dst):
+                                    shutil.move(src, dst)
+                                else:
+                                    # Name conflict: append suffix
+                                    name, ext = os.path.splitext(item)
+                                    counter = 1
+                                    while os.path.exists(dst):
+                                        dst = os.path.join(
+                                            target_path, f"{name} ({counter}){ext}"
+                                        )
+                                        counter += 1
+                                    shutil.move(src, dst)
+                        except OSError as exc:
+                            result.errors.append((full, str(exc)))
+                    # Remove now-empty duplicate folder
+                    try:
+                        if os.path.isdir(full) and not os.listdir(full):
+                            os.rmdir(full)
+                    except OSError:
+                        pass
+        except (PermissionError, OSError):
+            pass
 
     def _move_file(
         self,

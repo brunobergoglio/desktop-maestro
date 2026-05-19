@@ -917,6 +917,48 @@ def get_supported_languages() -> Dict[str, str]:
     }
 
 
+def find_existing_localized_folder(
+    directory: str,
+    category: Category,
+    supported_langs: Optional[List[str]] = None,
+) -> Optional[str]:
+    """Check if a folder matching any localized variant of this category already exists.
+
+    Scans the given directory for folder names matching any known language
+    translation of the category. This prevents duplicate folders when
+    switching UI languages (e.g., "🖼️ Images" vs "🖼️ Imágenes").
+
+    Args:
+        directory: The parent directory to scan.
+        category: The Category to look for.
+        supported_langs: Language codes to check. Defaults to SUPPORTED_LANGUAGES.
+
+    Returns:
+        The full path of the existing folder, or None if not found.
+    """
+    if not os.path.isdir(directory):
+        return None
+
+    langs = supported_langs or SUPPORTED_LANGUAGES
+
+    # Build set of all possible folder names for this category
+    possible_names: Set[str] = set()
+    for lang in langs:
+        possible_names.add(translate_folder_name(category.name, category.icon, lang))
+        # Also check without icon prefix (in case user renamed manually)
+        possible_names.add(translate_name(category.name, lang))
+
+    try:
+        for entry in os.listdir(directory):
+            full = os.path.join(directory, entry)
+            if os.path.isdir(full) and entry in possible_names:
+                return full
+    except (PermissionError, OSError):
+        pass
+
+    return None
+
+
 def build_extension_map(
     categories: Optional[List[Category]] = None,
 ) -> Dict[str, Category]:
