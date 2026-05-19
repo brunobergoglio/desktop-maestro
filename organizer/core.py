@@ -32,7 +32,6 @@ from .categories import (
 )
 from .config import DEFAULT_CONFIG_DIR, DesktopMaestroConfig, load_config
 
-
 # ─── Events / Callbacks ───
 
 

@@ -38,7 +38,6 @@ from .categories import (
 from .config import load_config, save_config, DesktopMaestroConfig, DEFAULT_CONFIG_FILE
 from .utils import get_desktop_stats, get_system_info
 
-
 API_PORT = int(os.environ.get("DESKTOPMAESTRO_PORT", 7899))
 API_HOST = os.environ.get("DESKTOPMAESTRO_HOST", "0.0.0.0")
 

@@ -50,7 +50,6 @@ from organizer.utils import (
     DesktopMaestroLogger,
 )
 
-
 # ─── Fixtures ───
 
 

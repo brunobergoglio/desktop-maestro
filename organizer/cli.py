@@ -33,7 +33,6 @@ from .utils import (
     show_macos_dialog,
 )
 
-
 # ─── Welcome Banner ───
 BANNER = r"""
 ╔══════════════════════════════════════════════════════════╗
@@ -43,9 +42,7 @@ BANNER = r"""
 ║     Smart desktop organizer for macOS                    ║
 ║                                                          ║
 ╚══════════════════════════════════════════════════════════╝
-""".format(
-    v=__version__
-)
+""".format(v=__version__)
 
 
 def build_parser() -> argparse.ArgumentParser:
