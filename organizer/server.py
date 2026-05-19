@@ -13,29 +13,25 @@ from __future__ import annotations
 
 import json
 import os
+import signal
+import subprocess
 import sys
 import time
-import signal
-import shutil
-import subprocess
 from datetime import datetime
-from http.server import HTTPServer, BaseHTTPRequestHandler
-from typing import Any, Dict, Optional
-from dataclasses import asdict
-from urllib.parse import urlparse, parse_qs
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from typing import Any
+from urllib.parse import parse_qs, urlparse
 
 from . import __version__
-from .core import DesktopOrganizer, organize_desktop
 from .categories import (
     DEFAULT_CATEGORIES,
-    OTHERS,
-    CATEGORY_ICONS,
-    translate_folder_name,
-    get_supported_languages,
     SUPPORTED_LANGUAGES,
+    get_supported_languages,
     smart_categorize,
+    translate_folder_name,
 )
-from .config import load_config, save_config, DesktopMaestroConfig, DEFAULT_CONFIG_FILE
+from .config import load_config, save_config
+from .core import DesktopOrganizer, organize_desktop
 from .utils import get_desktop_stats, get_system_info
 
 API_PORT = int(os.environ.get("DESKTOPMAESTRO_PORT", 7899))
@@ -61,7 +57,7 @@ class DesktopMaestroAPI(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8"))
 
-    def _read_body(self) -> Dict[str, Any]:
+    def _read_body(self) -> dict[str, Any]:
         """Read and parse JSON request body."""
         length = int(self.headers.get("Content-Length", 0))
         if length == 0:
@@ -210,11 +206,11 @@ class DesktopMaestroAPI(BaseHTTPRequestHandler):
                         404,
                     )
 
-                items: list[Dict[str, Any]] = []
+                items: list[dict[str, Any]] = []
                 total_files = 0
                 total_size = 0
-                by_extension: Dict[str, int] = {}
-                by_category: Dict[str, int] = {}
+                by_extension: dict[str, int] = {}
+                by_category: dict[str, int] = {}
 
                 for entry in sorted(os.listdir(folder_path)):
                     if entry.startswith("."):
@@ -223,7 +219,7 @@ class DesktopMaestroAPI(BaseHTTPRequestHandler):
                     full = os.path.join(folder_path, entry)
                     is_dir = os.path.isdir(full)
 
-                    item: Dict[str, Any] = {
+                    item: dict[str, Any] = {
                         "name": entry,
                         "is_dir": is_dir,
                         "size": 0,
@@ -363,7 +359,7 @@ class DesktopMaestroAPI(BaseHTTPRequestHandler):
 
             start = time.time()
             try:
-                overrides: Dict[str, Any] = {"language": lang}
+                overrides: dict[str, Any] = {"language": lang}
                 if custom_path:
                     overrides["desktop_path"] = custom_path
                 result = organize_desktop(dry_run=dry_run, **overrides)
@@ -415,8 +411,8 @@ def run_server(port: int = API_PORT, host: str = API_HOST):
     server = HTTPServer((host, port), DesktopMaestroAPI)
 
     # Handle shutdown gracefully
-    def shutdown(sig, frame):
-        print(f"\n🛑 Shutting down DesktopMaestro API server...")
+    def shutdown(_sig, _frame):
+        print("\n🛑 Shutting down DesktopMaestro API server...")
         server.shutdown()
         sys.exit(0)
 
@@ -426,7 +422,7 @@ def run_server(port: int = API_PORT, host: str = API_HOST):
     print(f"🧹 DesktopMaestro API Server v{__version__}")
     print(f"🌐  http://{host}:{port}")
     print(f"📖  API docs: http://{host}:{port}/api/health")
-    print(f"💡  Press Ctrl+C to stop")
+    print("💡  Press Ctrl+C to stop")
     print()
 
     try:

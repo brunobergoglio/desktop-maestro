@@ -7,16 +7,14 @@ desktop statistics, and system information helpers.
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import platform
 import plistlib
 import subprocess
 import sys
-from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import ClassVar
 
 from .config import DEFAULT_LOG_DIR
 
@@ -58,7 +56,7 @@ def get_macos_version() -> str:
 class ColoredFormatter:
     """Format log messages with colors and emoji icons for the terminal."""
 
-    colors: Dict[str, str] = {
+    colors: ClassVar[dict[str, str]] = {
         "DEBUG": "\033[36m",
         "INFO": "\033[32m",
         "WARNING": "\033[33m",
@@ -66,7 +64,7 @@ class ColoredFormatter:
         "CRITICAL": "\033[41m",
         "RESET": "\033[0m",
     }
-    icons: Dict[str, str] = {
+    icons: ClassVar[dict[str, str]] = {
         "DEBUG": "🐛",
         "INFO": "ℹ️",
         "WARNING": "⚠️",
@@ -123,7 +121,7 @@ class DesktopMaestroLogger:
         self.name = name
         self.verbose = verbose
         self.log_dir = log_dir
-        self.log_file: Optional[str] = None
+        self.log_file: str | None = None
         self._formatter = ColoredFormatter()
 
         self.logger = logging.getLogger(name)
@@ -238,10 +236,10 @@ def send_macos_notification(
 def show_macos_dialog(
     title: str,
     message: str,
-    buttons: Optional[List[str]] = None,
+    buttons: list[str] | None = None,
     default_button: str = "OK",
     icon: str = "note",
-) -> Optional[str]:
+) -> str | None:
     """
     Show a native macOS dialog window via osascript.
 
@@ -290,7 +288,7 @@ def show_macos_dialog(
 def create_launch_agent(
     plist_path: str = "~/Library/LaunchAgents/com.desktopmaestro.plist",
     interval_hours: int = 6,
-    python_path: Optional[str] = None,
+    python_path: str | None = None,
 ) -> str:
     """
     Create a macOS LaunchAgent to run DesktopMaestro on a schedule.
@@ -367,7 +365,7 @@ def remove_launch_agent(
 # ─── Desktop Statistics ───
 
 
-def get_desktop_stats(desktop_path: str = "~/Desktop") -> Dict:
+def get_desktop_stats(desktop_path: str = "~/Desktop") -> dict:
     """
     Analyze a desktop directory and return detailed statistics.
 
@@ -387,7 +385,7 @@ def get_desktop_stats(desktop_path: str = "~/Desktop") -> Dict:
     if not os.path.isdir(desktop_path):
         return {"error": "Directory not found"}
 
-    stats: Dict = {
+    stats: dict = {
         "total_files": 0,
         "total_folders": 0,
         "total_size_bytes": 0,
@@ -405,8 +403,8 @@ def get_desktop_stats(desktop_path: str = "~/Desktop") -> Dict:
 
     oldest_time = float("inf")
     newest_time = 0.0
-    oldest_name: Optional[str] = None
-    newest_name: Optional[str] = None
+    oldest_name: str | None = None
+    newest_name: str | None = None
 
     try:
         for entry in os.listdir(desktop_path):
@@ -484,7 +482,7 @@ def _format_size(size_bytes: int) -> str:
 # ─── System Information ───
 
 
-def get_system_info() -> Dict[str, str]:
+def get_system_info() -> dict[str, str]:
     """
     Collect system information for diagnostics.
 

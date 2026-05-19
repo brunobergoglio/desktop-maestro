@@ -11,14 +11,13 @@ from __future__ import annotations
 import os
 import re
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set
 
 # ─── Supported languages ───
 SUPPORTED_LANGUAGES = ["en", "es"]
 DEFAULT_LANGUAGE = "en"
 
 # ─── Category name translations (English → Spanish) ───
-CATEGORY_TRANSLATIONS: Dict[str, Dict[str, str]] = {
+CATEGORY_TRANSLATIONS: dict[str, dict[str, str]] = {
     "en": {
         "Images": "Images",
         "Documents": "Documents",
@@ -72,7 +71,7 @@ CATEGORY_TRANSLATIONS: Dict[str, Dict[str, str]] = {
 }
 
 # Cache for translated names to avoid repeated lookups
-_translation_cache: Dict[str, Dict[str, str]] = {"en": {}, "es": {}}
+_translation_cache: dict[str, dict[str, str]] = {"en": {}, "es": {}}
 
 
 def translate_name(english_name: str, lang: str = "en") -> str:
@@ -106,7 +105,7 @@ def translate_folder_name(english_name: str, icon: str, lang: str = "en") -> str
 
 
 # ─── Icon map for all categories (macOS emoji-friendly) ───
-CATEGORY_ICONS: Dict[str, str] = {
+CATEGORY_ICONS: dict[str, str] = {
     "Images": "🖼️",
     "Documents": "📄",
     "Archives": "🗜️",
@@ -153,14 +152,14 @@ class Category:
 
     name: str
     icon: str
-    extensions: Set[str] = field(default_factory=set, hash=False)
-    patterns: List[str] = field(default_factory=list, hash=False)
-    folder_name: Optional[str] = None
+    extensions: set[str] = field(default_factory=set, hash=False)
+    patterns: list[str] = field(default_factory=list, hash=False)
+    folder_name: str | None = None
     """Custom folder name override. If None, computed dynamically from name + icon + language."""
     priority: int = 0
     language: str = "en"
 
-    def get_localized_name(self, lang: Optional[str] = None) -> str:
+    def get_localized_name(self, lang: str | None = None) -> str:
         """Get the category name in the specified language.
 
         Args:
@@ -171,7 +170,7 @@ class Category:
         """
         return translate_name(self.name, lang or self.language)
 
-    def get_localized_folder(self, lang: Optional[str] = None) -> str:
+    def get_localized_folder(self, lang: str | None = None) -> str:
         """Get the folder name in the specified language.
 
         If a custom folder_name is set (user override), returns that.
@@ -216,7 +215,7 @@ class Category:
 # ─── Predefined categories ───
 
 # macOS system files that must NEVER be touched
-MACOS_SYSTEM_FILES: Set[str] = {
+MACOS_SYSTEM_FILES: set[str] = {
     ".DS_Store",
     ".localized",
     ".Spotlight-V100",
@@ -229,7 +228,7 @@ MACOS_SYSTEM_FILES: Set[str] = {
 }
 
 # macOS hidden files that are always ignored
-MACOS_HIDDEN_FILES: Set[str] = {
+MACOS_HIDDEN_FILES: set[str] = {
     ".DS_Store",
     ".localized",
 }
@@ -775,7 +774,7 @@ MACOS_SYSTEM_CATEGORY = Category(
 )
 
 # ─── Category ordering (most specific → most general) ───
-DEFAULT_CATEGORIES: List[Category] = [
+DEFAULT_CATEGORIES: list[Category] = [
     MACOS_SYSTEM_CATEGORY,  # System first (maximum priority)
     TEMPORARY,  # Trash
     TORRENTS,
@@ -810,7 +809,7 @@ OTHERS = Category(
 
 def smart_categorize(
     filename: str,
-    custom_categories: Optional[List[Category]] = None,
+    custom_categories: list[Category] | None = None,
 ) -> Category:
     """
     Classify a file into the best-matching category.
@@ -858,7 +857,7 @@ def smart_categorize(
     return OTHERS
 
 
-def get_category_folder_name(category: Category, lang: Optional[str] = None) -> str:
+def get_category_folder_name(category: Category, lang: str | None = None) -> str:
     """
     Get the folder name for a category, respecting language.
 
@@ -905,7 +904,7 @@ def is_directory_safe_to_process(dirpath: str) -> bool:
     return basename not in MACOS_SYSTEM_FILES
 
 
-def get_supported_languages() -> Dict[str, str]:
+def get_supported_languages() -> dict[str, str]:
     """Get a dict of supported language codes to their display names.
 
     Returns:
@@ -920,8 +919,8 @@ def get_supported_languages() -> Dict[str, str]:
 def find_existing_localized_folder(
     directory: str,
     category: Category,
-    supported_langs: Optional[List[str]] = None,
-) -> Optional[str]:
+    supported_langs: list[str] | None = None,
+) -> str | None:
     """Check if a folder matching any localized variant of this category already exists.
 
     Scans the given directory for folder names matching any known language
@@ -942,7 +941,7 @@ def find_existing_localized_folder(
     langs = supported_langs or SUPPORTED_LANGUAGES
 
     # Build set of all possible folder names for this category
-    possible_names: Set[str] = set()
+    possible_names: set[str] = set()
     for lang in langs:
         possible_names.add(translate_folder_name(category.name, category.icon, lang))
         # Also check without icon prefix (in case user renamed manually)
@@ -960,8 +959,8 @@ def find_existing_localized_folder(
 
 
 def build_extension_map(
-    categories: Optional[List[Category]] = None,
-) -> Dict[str, Category]:
+    categories: list[Category] | None = None,
+) -> dict[str, Category]:
     """
     Build a fast lookup map from file extension to Category.
 
@@ -971,7 +970,7 @@ def build_extension_map(
     Returns:
         Dict mapping lowercase extensions (e.g., ".jpg") to Category instances.
     """
-    ext_map: Dict[str, Category] = {}
+    ext_map: dict[str, Category] = {}
     for cat in categories or DEFAULT_CATEGORIES:
         for ext in cat.extensions:
             ext_map[ext.lower()] = cat

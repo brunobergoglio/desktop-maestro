@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass, field, asdict
-from typing import Any, Dict, List, Optional
+from dataclasses import asdict, dataclass, field
+from typing import Any
 
 try:
     import yaml
@@ -20,10 +20,10 @@ except ImportError:
     HAS_YAML = False
 
 from .categories import (
+    DEFAULT_LANGUAGE,
+    SUPPORTED_LANGUAGES,
     Category,
     get_category_folder_name,
-    SUPPORTED_LANGUAGES,
-    DEFAULT_LANGUAGE,
 )
 
 # ─── Default paths (macOS) ───
@@ -67,11 +67,11 @@ class DesktopMaestroConfig:
     """Create custom folder icons on macOS (via .localized files)."""
 
     # ─── Filters ───
-    include_extensions: List[str] = field(default_factory=list)
+    include_extensions: list[str] = field(default_factory=list)
     """Only include these extensions (empty = all)."""
-    exclude_extensions: List[str] = field(default_factory=list)
+    exclude_extensions: list[str] = field(default_factory=list)
     """Extensions to always skip."""
-    exclude_files: List[str] = field(
+    exclude_files: list[str] = field(
         default_factory=lambda: [
             ".DS_Store",
             ".localized",
@@ -80,7 +80,7 @@ class DesktopMaestroConfig:
         ]
     )
     """Specific filenames to never touch."""
-    exclude_patterns: List[str] = field(
+    exclude_patterns: list[str] = field(
         default_factory=lambda: [
             r"^\._.*",  # Apple Double files
             r"^\..*\.icloud$",  # iCloud placeholder files
@@ -89,11 +89,11 @@ class DesktopMaestroConfig:
     """Regex patterns for files to exclude."""
 
     # ─── Custom Categories ───
-    custom_categories: List[Dict[str, Any]] = field(default_factory=list)
+    custom_categories: list[dict[str, Any]] = field(default_factory=list)
     """User-defined categories (see docs for format)."""
-    disabled_categories: List[str] = field(default_factory=list)
+    disabled_categories: list[str] = field(default_factory=list)
     """Names of built-in categories to disable."""
-    category_folder_names: Dict[str, str] = field(default_factory=dict)
+    category_folder_names: dict[str, str] = field(default_factory=dict)
     """Custom folder name overrides for any category."""
 
     # ─── Organization ───
@@ -127,7 +127,7 @@ class DesktopMaestroConfig:
     """Whether automatic organization is enabled."""
     schedule_interval_hours: int = 6
     """Interval in hours between automatic runs."""
-    schedule_time: Optional[str] = None
+    schedule_time: str | None = None
     """Specific time of day for scheduling (HH:MM)."""
 
     # ─── Notifications ───
@@ -148,12 +148,12 @@ class DesktopMaestroConfig:
     add_tags_to_folders: bool = False
     """Add color tags to category folders (requires 'brew install tag')."""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert configuration to a plain dictionary."""
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> DesktopMaestroConfig:
+    def from_dict(cls, data: dict[str, Any]) -> DesktopMaestroConfig:
         """
         Create configuration from a dictionary.
 
@@ -197,7 +197,7 @@ class DesktopMaestroConfig:
 # ─── Config Load / Save ───
 
 
-def load_config(config_path: Optional[str] = None) -> DesktopMaestroConfig:
+def load_config(config_path: str | None = None) -> DesktopMaestroConfig:
     """
     Load configuration from a YAML or JSON file.
 
@@ -223,7 +223,7 @@ def load_config(config_path: Optional[str] = None) -> DesktopMaestroConfig:
         save_config(config, path)
         return config
 
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         content = f.read()
 
     if path.endswith(".json"):
@@ -244,7 +244,7 @@ def load_config(config_path: Optional[str] = None) -> DesktopMaestroConfig:
     return DesktopMaestroConfig.from_dict(data)
 
 
-def save_config(config: DesktopMaestroConfig, path: Optional[str] = None) -> str:
+def save_config(config: DesktopMaestroConfig, path: str | None = None) -> str:
     """
     Save configuration to a file.
 
@@ -283,7 +283,7 @@ def save_config(config: DesktopMaestroConfig, path: Optional[str] = None) -> str
     return path
 
 
-def create_default_config(config_path: Optional[str] = None) -> str:
+def create_default_config(config_path: str | None = None) -> str:
     """
     Create a commented default configuration file.
 
@@ -301,14 +301,14 @@ def create_default_config(config_path: Optional[str] = None) -> str:
         config = DesktopMaestroConfig()
         return save_config(config, path)
 
-    yaml_content = r"""# ─── DesktopMaestro Configuration ───
+    yaml_content = rf"""# ─── DesktopMaestro Configuration ───
 # Smart desktop organizer for macOS
 # Documentation: https://github.com/brunitobe/desktopmaestro#readme
 
 # ─── Paths ───
-desktop_path: "{desktop_path}"
-config_dir: "{config_dir}"
-log_dir: "{log_dir}"
+desktop_path: "{DEFAULT_DESKTOP_PATH}"
+config_dir: "{DEFAULT_CONFIG_DIR}"
+log_dir: "{DEFAULT_LOG_DIR}"
 
 # ─── Language ───
 language: "en"                # Folder names: "en" (English) or "es" (Español)
@@ -375,11 +375,7 @@ hide_dmg_volumes: true
 skip_system_directories: true
 respect_spotlight_tags: false
 add_tags_to_folders: false    # Requires: brew install tag
-""".format(
-        desktop_path=DEFAULT_DESKTOP_PATH,
-        config_dir=DEFAULT_CONFIG_DIR,
-        log_dir=DEFAULT_LOG_DIR,
-    )
+"""
 
     with open(path, "w", encoding="utf-8") as f:
         f.write(yaml_content)

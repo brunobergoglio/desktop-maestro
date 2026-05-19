@@ -7,6 +7,7 @@ undo snapshots, and macOS-specific operations.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import os
@@ -14,19 +15,16 @@ import re
 import shutil
 import subprocess
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timedelta
+from dataclasses import asdict, dataclass, field
+from datetime import datetime
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Set, Tuple
+from typing import Callable
 
 from .categories import (
     DEFAULT_CATEGORIES,
-    MACOS_SYSTEM_FILES,
     OTHERS,
     Category,
     find_existing_localized_folder,
-    get_category_folder_name,
     is_macos_system_file,
     smart_categorize,
 )
@@ -44,21 +42,21 @@ class OrganizerEvents:
     """
 
     def __init__(self) -> None:
-        self.on_start: Optional[Callable[[], None]] = None
+        self.on_start: Callable[[], None] | None = None
         """Called when organization begins."""
-        self.on_file_moved: Optional[Callable[[str, str, str], None]] = None
+        self.on_file_moved: Callable[[str, str, str], None] | None = None
         """Called for each file moved: (source, destination, category)."""
-        self.on_file_skipped: Optional[Callable[[str, str], None]] = None
+        self.on_file_skipped: Callable[[str, str], None] | None = None
         """Called when a file is skipped: (path, reason)."""
-        self.on_category_created: Optional[Callable[[str], None]] = None
+        self.on_category_created: Callable[[str], None] | None = None
         """Called when a category folder is created."""
-        self.on_error: Optional[Callable[[str, Exception], None]] = None
+        self.on_error: Callable[[str, Exception], None] | None = None
         """Called on error: (path, exception)."""
-        self.on_complete: Optional[Callable[[int, int, int], None]] = None
+        self.on_complete: Callable[[int, int, int], None] | None = None
         """Called when organization finishes: (moved, skipped, errors)."""
-        self.on_progress: Optional[Callable[[int, int, str], None]] = None
+        self.on_progress: Callable[[int, int, str], None] | None = None
         """Progress callback: (current, total, current_filename)."""
-        self.on_undo_created: Optional[Callable[[str], None]] = None
+        self.on_undo_created: Callable[[str], None] | None = None
         """Called when an undo snapshot is saved."""
 
     def fire_start(self) -> None:
@@ -111,13 +109,13 @@ class OrganizeResult:
     timing information, and a human-readable summary.
     """
 
-    moved_files: List[Tuple[str, str, str]] = field(default_factory=list)
+    moved_files: list[tuple[str, str, str]] = field(default_factory=list)
     """List of (source, destination, category_name) for each moved file."""
-    skipped_files: List[Tuple[str, str]] = field(default_factory=list)
+    skipped_files: list[tuple[str, str]] = field(default_factory=list)
     """List of (path, reason) for skipped files."""
-    errors: List[Tuple[str, str]] = field(default_factory=list)
+    errors: list[tuple[str, str]] = field(default_factory=list)
     """List of (path, error_message) for errors."""
-    categories_created: List[str] = field(default_factory=list)
+    categories_created: list[str] = field(default_factory=list)
     """Names of category folders that were created."""
     start_time: float = 0.0
     """Unix timestamp when the operation started."""
@@ -153,19 +151,19 @@ class OrganizeResult:
         lines.append(f"   • Time elapsed:    {self.duration_seconds:.2f}s")
 
         if self.categories_created:
-            lines.append(f"\n📁 Folders created:")
+            lines.append("\n📁 Folders created:")
             for folder in self.categories_created:
                 lines.append(f"   • {folder}")
 
         if self.moved_files:
-            lines.append(f"\n📦 Files organized:")
-            for src, dst, cat in self.moved_files[:10]:
+            lines.append("\n📦 Files organized:")
+            for src, _dst, cat in self.moved_files[:10]:
                 lines.append(f"   • {os.path.basename(src)} → {cat}")
             if len(self.moved_files) > 10:
                 lines.append(f"   ... and {len(self.moved_files) - 10} more")
 
         if self.errors:
-            lines.append(f"\n❌ Errors:")
+            lines.append("\n❌ Errors:")
             for path, error in self.errors[:5]:
                 lines.append(f"   • {os.path.basename(path)}: {error}")
             if len(self.errors) > 5:
@@ -190,12 +188,12 @@ class UndoEntry:
     file_size: int
     """File size in bytes."""
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         """Serialize to a plain dictionary for JSON storage."""
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict) -> UndoEntry:
+    def from_dict(cls, data: dict) -> UndoEntry:
         """Deserialize from a dictionary."""
         return cls(**data)
 
@@ -225,7 +223,7 @@ class UndoManager:
 
     def create_snapshot(
         self,
-        entries: List[UndoEntry],
+        entries: list[UndoEntry],
         description: str = "",
     ) -> str:
         """
@@ -253,7 +251,7 @@ class UndoManager:
         self._cleanup_old_snapshots()
         return path
 
-    def restore_snapshot(self, snapshot_path: str) -> List[Tuple[str, str, bool]]:
+    def restore_snapshot(self, snapshot_path: str) -> list[tuple[str, str, bool]]:
         """
         Restore a snapshot (undo an organization).
 
@@ -265,10 +263,10 @@ class UndoManager:
         Returns:
             List of (path, status_message, success) tuples.
         """
-        with open(snapshot_path, "r", encoding="utf-8") as f:
+        with open(snapshot_path, encoding="utf-8") as f:
             snapshot = json.load(f)
 
-        results: List[Tuple[str, str, bool]] = []
+        results: list[tuple[str, str, bool]] = []
         entries = [UndoEntry.from_dict(e) for e in snapshot["entries"]]
 
         # Restore in reverse order (last moved → first restored)
@@ -321,7 +319,7 @@ class UndoManager:
 
         return results
 
-    def list_snapshots(self) -> List[Dict]:
+    def list_snapshots(self) -> list[dict]:
         """
         List all available undo snapshots, sorted newest first.
 
@@ -329,7 +327,7 @@ class UndoManager:
             List of dicts with keys: file, path, timestamp, description,
             created_at, entries_count, error (if unreadable).
         """
-        snapshots: List[Dict] = []
+        snapshots: list[dict] = []
         if not os.path.exists(self.undo_dir):
             return snapshots
 
@@ -337,7 +335,7 @@ class UndoManager:
             if f.startswith("undo_") and f.endswith(".json"):
                 path = os.path.join(self.undo_dir, f)
                 try:
-                    with open(path, "r", encoding="utf-8") as fp:
+                    with open(path, encoding="utf-8") as fp:
                         data = json.load(fp)
                     snapshots.append(
                         {
@@ -380,10 +378,8 @@ class UndoManager:
 
         while len(snapshots) > max_snapshots:
             oldest = snapshots.pop(0)
-            try:
+            with contextlib.suppress(OSError):
                 os.remove(oldest)
-            except OSError:
-                pass
 
     def _cleanup_empty_folders(self, base_path: str) -> None:
         """Remove empty folders after a restore operation."""
@@ -409,8 +405,8 @@ class DesktopOrganizer:
 
     def __init__(
         self,
-        config: Optional[DesktopMaestroConfig] = None,
-        config_path: Optional[str] = None,
+        config: DesktopMaestroConfig | None = None,
+        config_path: str | None = None,
     ) -> None:
         """
         Initialize the organizer.
@@ -506,7 +502,7 @@ class DesktopOrganizer:
                 "   5. Add your terminal app (Terminal.app, iTerm2, etc.)\n"
                 "   6. Restart your terminal and try again\n\n"
                 "   Or try: desktopmaestro organize --path ~/Downloads"
-            )
+            ) from None
 
         # 1. Consolidate all category folders (language-agnostic merge)
         #    This runs even if there are no files to process — it renames
@@ -597,7 +593,7 @@ class DesktopOrganizer:
 
         return result
 
-    def undo(self, snapshot_path: Optional[str] = None) -> List[Tuple[str, str, bool]]:
+    def undo(self, snapshot_path: str | None = None) -> list[tuple[str, str, bool]]:
         """
         Undo the last organization operation.
 
@@ -622,7 +618,7 @@ class DesktopOrganizer:
 
     # ─── Internal Methods ───
 
-    def _scan_desktop(self, desktop_path: str) -> List[str]:
+    def _scan_desktop(self, desktop_path: str) -> list[str]:
         """
         Scan the desktop and collect eligible files.
 
@@ -679,9 +675,11 @@ class DesktopOrganizer:
             _, ext = os.path.splitext(entry)
             ext = ext.lower()
 
-            if self.config.include_extensions:
-                if ext not in self.config.include_extensions:
-                    continue
+            if (
+                self.config.include_extensions
+                and ext not in self.config.include_extensions
+            ):
+                continue
 
             if ext in self.config.exclude_extensions:
                 continue
@@ -745,7 +743,7 @@ class DesktopOrganizer:
                 target = desired_path if rename_ok else existing
                 self._consolidate_variants(desktop_path, category, target, result)
 
-    def _categorize_files(self, files: List[str]) -> Dict[Category, List[str]]:
+    def _categorize_files(self, files: list[str]) -> dict[Category, list[str]]:
         """
         Classify files into categories.
 
@@ -766,7 +764,7 @@ class DesktopOrganizer:
         # Disabled categories fall through to "Others"
         disabled = set(self.config.disabled_categories)
 
-        categorized: Dict[Category, List[str]] = {}
+        categorized: dict[Category, list[str]] = {}
         for filepath in files:
             filename = os.path.basename(filepath)
             category = smart_categorize(filename, custom_cats)
@@ -783,9 +781,9 @@ class DesktopOrganizer:
     def _ensure_category_folders(
         self,
         desktop_path: str,
-        categorized: Dict[Category, List[str]],
+        categorized: dict[Category, list[str]],
         result: OrganizeResult,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """
         Create category folders on the desktop.
 
@@ -797,7 +795,7 @@ class DesktopOrganizer:
         Returns:
             Dict mapping category name to folder path.
         """
-        target_folders: Dict[str, str] = {}
+        target_folders: dict[str, str] = {}
 
         for category, files in categorized.items():
             if not files:
@@ -855,16 +853,16 @@ class DesktopOrganizer:
             result: OrganizeResult to record errors.
         """
         from .categories import (
+            SUPPORTED_LANGUAGES,
             translate_folder_name,
             translate_name,
-            SUPPORTED_LANGUAGES,
         )
 
         if self.is_dry_run:
             return
 
         # Build all possible names for this category
-        variant_names: Set[str] = set()
+        variant_names: set[str] = set()
         for lang in SUPPORTED_LANGUAGES:
             variant_names.add(translate_folder_name(category.name, category.icon, lang))
             variant_names.add(translate_name(category.name, lang))
@@ -910,8 +908,8 @@ class DesktopOrganizer:
         self,
         src: str,
         dst_folder: str,
-        category: Category,
-    ) -> Optional[str]:
+        _category: Category,
+    ) -> str | None:
         """
         Safely move a file to its destination folder.
 
@@ -998,7 +996,7 @@ class DesktopOrganizer:
             with open(filepath, "rb") as f:
                 f.read(1)
             return True
-        except (IOError, OSError):
+        except OSError:
             return False
 
     def _compute_hash(self, filepath: str) -> str:
@@ -1009,7 +1007,7 @@ class DesktopOrganizer:
                 h.update(chunk)
         return h.hexdigest()
 
-    def _create_localized_file(self, folder_path: str, display_name: str) -> None:
+    def _create_localized_file(self, folder_path: str, _display_name: str) -> None:
         """
         Create a .localized file so Finder displays emoji folder names correctly.
         """
@@ -1047,14 +1045,12 @@ class DesktopOrganizer:
 
         color = color_map.get(category_name)
         if color:
-            try:
+            with contextlib.suppress(subprocess.SubprocessError, FileNotFoundError):
                 subprocess.run(
                     ["tag", "-a", color, folder_path],
                     capture_output=True,
                     timeout=5,
                 )
-            except (subprocess.SubprocessError, FileNotFoundError):
-                pass
 
     @staticmethod
     def _show_permissions_guide() -> None:
@@ -1083,7 +1079,7 @@ class DesktopOrganizer:
             + "╚══════════════════════════════════════════════════════════════╝"
         )
         print(guide)
-        try:
+        with contextlib.suppress(subprocess.SubprocessError, FileNotFoundError):
             subprocess.run(
                 [
                     "open",
@@ -1092,8 +1088,6 @@ class DesktopOrganizer:
                 ],
                 timeout=5,
             )
-        except (subprocess.SubprocessError, FileNotFoundError):
-            pass
 
     @staticmethod
     def request_full_disk_access() -> bool:
@@ -1125,7 +1119,7 @@ class DesktopOrganizer:
 
 
 def organize_desktop(
-    config_path: Optional[str] = None,
+    config_path: str | None = None,
     dry_run: bool = False,
     **kwargs,
 ) -> OrganizeResult:

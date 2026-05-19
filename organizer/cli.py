@@ -5,44 +5,43 @@ Provides a premium user experience with colored output, progress bars,
 native macOS dialogs, and multiple subcommands for complete control.
 """
 
+import argparse
+import importlib
 import os
 import sys
-import argparse
 import time
 from datetime import datetime
 from typing import Optional
 
-from . import __version__, __description__
-from .core import DesktopOrganizer, organize_desktop
+from . import __description__, __version__
 from .categories import SUPPORTED_LANGUAGES
 from .config import (
-    load_config,
-    save_config,
-    create_default_config,
-    DesktopMaestroConfig,
     DEFAULT_CONFIG_FILE,
+    create_default_config,
+    load_config,
 )
+from .core import DesktopOrganizer
 from .utils import (
     DesktopMaestroLogger,
-    send_macos_notification,
+    create_launch_agent,
     get_desktop_stats,
     get_system_info,
-    create_launch_agent,
-    remove_launch_agent,
     is_macos,
+    remove_launch_agent,
+    send_macos_notification,
     show_macos_dialog,
 )
 
 # ─── Welcome Banner ───
-BANNER = r"""
+BANNER = rf"""
 ╔══════════════════════════════════════════════════════════╗
 ║                                                          ║
-║     \U0001f9f9  DesktopMaestro  v{v}                   ║
+║     \U0001f9f9  DesktopMaestro  v{__version__}                   ║
 ║     ───────────────────────────────                      ║
 ║     Smart desktop organizer for macOS                    ║
 ║                                                          ║
 ╚══════════════════════════════════════════════════════════╝
-""".format(v=__version__)
+"""
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -221,7 +220,7 @@ Examples:
     sched_sub.add_parser("status", help="View scheduling status")
 
     # ─── system ───
-    system_parser = subparsers.add_parser(
+    subparsers.add_parser(
         "system",
         aliases=["info"],
         help="System information",
@@ -637,7 +636,7 @@ def cmd_schedule(args, log: DesktopMaestroLogger):
     return 0
 
 
-def cmd_system(args, log: DesktopMaestroLogger):
+def cmd_system(_args, log: DesktopMaestroLogger):
     """Display system information."""
     log.section("💻 SYSTEM INFORMATION")
 
@@ -656,12 +655,7 @@ def cmd_system(args, log: DesktopMaestroLogger):
         "PyYAML": False,
         "tag": False,
     }
-    try:
-        import yaml
-
-        deps["PyYAML"] = True
-    except ImportError:
-        pass
+    deps["PyYAML"] = importlib.util.find_spec("yaml") is not None
 
     import shutil
 
@@ -685,8 +679,8 @@ def cmd_web(args, log: DesktopMaestroLogger):
 
     log.section("🌐 WEB UI")
     log.info(f"🚀 Starting API server on http://127.0.0.1:{args.port}")
-    log.info(f"📱 Start frontend: cd frontend && npm run dev")
-    log.info(f"💡 Or open: http://localhost:3000")
+    log.info("📱 Start frontend: cd frontend && npm run dev")
+    log.info("💡 Or open: http://localhost:3000")
     log.info("")
 
     if args.open:

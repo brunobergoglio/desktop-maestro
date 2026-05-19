@@ -5,49 +5,42 @@ Covers categorization, organization engine, configuration, undo,
 utilities, integration, and performance benchmarks.
 """
 
+import json
 import os
 import sys
-import json
 import tempfile
-import shutil
+
 import pytest
-from pathlib import Path
-from datetime import datetime
-from unittest.mock import patch, MagicMock
 
 # Añadir raíz del proyecto al path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from organizer import __version__, __description__
 from organizer.categories import (
-    Category,
-    smart_categorize,
-    is_macos_system_file,
-    DEFAULT_CATEGORIES,
-    OTHERS,
     CATEGORY_ICONS,
+    DEFAULT_CATEGORIES,
     MACOS_SYSTEM_FILES,
+    Category,
     build_extension_map,
+    is_macos_system_file,
+    smart_categorize,
 )
 from organizer.config import (
     DesktopMaestroConfig,
+    create_default_config,
     load_config,
     save_config,
-    create_default_config,
-    DEFAULT_CONFIG_FILE,
 )
 from organizer.core import (
     DesktopOrganizer,
     OrganizeResult,
-    UndoManager,
     UndoEntry,
+    UndoManager,
     organize_desktop,
 )
 from organizer.utils import (
-    is_macos,
-    get_desktop_stats,
-    _format_size,
     DesktopMaestroLogger,
+    _format_size,
+    get_desktop_stats,
 )
 
 # ─── Fixtures ───
@@ -324,13 +317,13 @@ class TestCore:
 
         assert len(categorized) > 0
         all_files = []
-        for cat, cat_files in categorized.items():
+        for _cat, cat_files in categorized.items():
             all_files.extend(cat_files)
 
         assert len(all_files) == len(files)
 
         # Verificar que categorías específicas estén presentes
-        cat_names = [cat.name for cat in categorized.keys()]
+        cat_names = [cat.name for cat in categorized]
         assert "Images" in cat_names
         assert "PDFs" in cat_names
         assert "Videos" in cat_names
@@ -346,7 +339,7 @@ class TestCore:
         assert result.success_count > 0
 
         # Files should remain on the desktop
-        for src, dst, cat in result.moved_files:
+        for src, _dst, _cat in result.moved_files:
             assert os.path.exists(src), f"File {src} should not have been moved"
 
     def test_real_organize(self, temp_desktop):
@@ -362,7 +355,7 @@ class TestCore:
         assert result.success_count > 0
 
         # Files should no longer be on the desktop root
-        for src, dst, cat in result.moved_files:
+        for src, dst, _cat in result.moved_files:
             assert not os.path.exists(src), f"File {src} should have been moved"
             assert os.path.exists(dst), f"File {dst} should exist"
 
@@ -383,7 +376,7 @@ class TestCore:
             desktop_path=temp_desktop,
         )
         org = DesktopOrganizer(config=config)
-        result = org.organize()
+        org.organize()
 
         # Folders should remain intact
         folder = os.path.join(temp_desktop, "My Folder")
@@ -398,7 +391,7 @@ class TestCore:
             exclude_extensions=[".part"],
         )
         org = DesktopOrganizer(config=config)
-        result = org.organize()
+        org.organize()
 
         # descarga.part debería estar excluído
         part_file = os.path.join(temp_desktop, "download.part")
